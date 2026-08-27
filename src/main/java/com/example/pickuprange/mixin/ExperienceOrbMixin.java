@@ -95,9 +95,19 @@ public abstract class ExperienceOrbMixin {
         this.followingPlayer = null;
     }
 
+    /**
+     * Restore the cached target and update velocity immediately before vanilla reads
+     * the {@link Vec3} passed to {@code move}. Injecting at {@code move} itself is too
+     * late: the JVM has already evaluated {@code getDeltaMovement()} onto the operand
+     * stack by then, so that tick would move with the pre-attraction velocity.
+     *
+     * <p>In 1.19.4 this is the third {@code getDeltaMovement()} call in {@code tick}:
+     * gravity, vanilla attraction, then the argument to {@code move}.</p>
+     */
     @Inject(method = "tick", at = @At(value = "INVOKE",
-            target = "Lnet/minecraft/world/entity/ExperienceOrb;move(Lnet/minecraft/world/entity/MoverType;Lnet/minecraft/world/phys/Vec3;)V"))
-    private void applyConfiguredAttraction(CallbackInfo ci) {
+            target = "Lnet/minecraft/world/entity/ExperienceOrb;getDeltaMovement()Lnet/minecraft/world/phys/Vec3;",
+            ordinal = 2))
+    private void restoreTargetAndApplyConfiguredAttraction(CallbackInfo ci) {
         ExperienceOrb self = (ExperienceOrb) (Object) this;
         if (self.getLevel().isClientSide) return;
 

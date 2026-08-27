@@ -145,6 +145,7 @@ Requirements: JDK 17 or newer, internet connection (first build downloads Minecr
 ```bash
 git clone https://github.com/wenhaoquestion/PickupWidely-fabric.git
 cd PickupWidely-fabric
+git switch mc/1.19.4
 ./gradlew build
 # Output JAR: build/libs/pickup-range-2.0.0+1.19.4.jar
 ```
