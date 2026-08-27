@@ -22,7 +22,7 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
  * <p>Vanilla still handles the final absorption when the orb reaches the player.
  *
  * <p>VERSION-SENSITIVE: targets the Mojang-mapped private method
- * {@code ExperienceOrb#followNearbyPlayer()} in 1.21.11.
+ * {@code ExperienceOrb#followNearbyPlayer()} in 1.21.10.
  */
 @Mixin(ExperienceOrb.class)
 public abstract class ExperienceOrbMixin {

@@ -15,5 +15,6 @@
   "pickuprange.screen.xp_range":          "XP Pickup Range",
   "pickuprange.screen.apply":             "Apply",
   "key.pickuprange.open_screen":          "Open Range Settings",
-  "key.category.pickuprange":             "Pickup Range"
+  "key.category.pickuprange":             "Pickup Range",
+  "key.category.minecraft.pickuprange":   "Pickup Range"
 }
