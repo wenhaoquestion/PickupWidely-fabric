@@ -57,7 +57,7 @@ public abstract class ItemEntityMixin {
     @Inject(at = @At("HEAD"), method = "playerTouch", cancellable = true)
     private void enforceConfiguredPickupRange(Player player, CallbackInfo ci) {
         ItemEntity self = (ItemEntity) (Object) this;
-        if (self.level().isClientSide()) return;
+        if (self.getLevel().isClientSide) return;
 
         ServerConfig config = PickupRangeMod.getServerConfig();
         double effectiveRange = config.clamp(
@@ -79,7 +79,7 @@ public abstract class ItemEntityMixin {
     private void onPickupRangeTick(CallbackInfo ci) {
         ItemEntity self = (ItemEntity) (Object) this;
 
-        if (self.level().isClientSide()) return;
+        if (self.getLevel().isClientSide) return;
         if (self.isRemoved()) return; // vanilla already picked it up this tick
         if (pickupDelay != 0) return;
 
@@ -87,9 +87,9 @@ public abstract class ItemEntityMixin {
 
         // Player lists are much cheaper here than a maxRange-sized entity volume query for
         // every item entity on every tick.
-        for (Player player : self.level().players()) {
+        for (Player player : self.getLevel().players()) {
             if (self.isRemoved()) break;
-            if (player.isSpectator()) continue;
+            if (player.isSpectator() || player.isDeadOrDying()) continue;
 
             // Vanilla's player tick owns this exact overlap. A fixed-radius approximation
             // incorrectly swallowed valid configured ranges such as 1.5 blocks.

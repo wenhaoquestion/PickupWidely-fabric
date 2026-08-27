@@ -6,81 +6,137 @@ import com.example.pickuprange.data.PlayerRangeManager;
 import net.minecraft.world.entity.ExperienceOrb;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.phys.Vec3;
+import org.objectweb.asm.Opcodes;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Shadow;
+import org.spongepowered.asm.mixin.Unique;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
 /**
- * Mixin into {@link ExperienceOrb} to extend the XP orb attraction range.
+ * Replaces the server-side XP attraction step for Minecraft 1.19.4.
  *
- * <p>Vanilla's private follow routine uses one fixed 8-block radius. This mixin replaces
- * that routine on the logical server so each player can be evaluated against their own
- * effective XP range. The default value of 8.0 follows vanilla's selection and force curve.
- *
- * <p>Vanilla still handles the final absorption when the orb reaches the player.
- *
- * <p>VERSION-SENSITIVE: targets the Mojang-mapped private method
- * {@code ExperienceOrb#followNearbyPlayer()} in 1.21.11.
+ * <p>In this version player scanning lives in {@code scanForEntities()}, while the
+ * fixed eight-block force is inline in {@code tick()}. The mixin preserves vanilla's
+ * 20-tick cached-target rhythm and orb merging, but replaces target eligibility and
+ * attraction strength with the target player's configured range.</p>
  */
 @Mixin(ExperienceOrb.class)
 public abstract class ExperienceOrbMixin {
-
-    /** Vanilla's cached target; kept coherent for save/debug/mod interoperability. */
     @Shadow private Player followingPlayer;
 
-    /**
-     * Selects the nearest player whose own effective range contains this orb, then applies
-     * vanilla's attraction curve using that range as the radius.
-     */
-    @Inject(at = @At("HEAD"), method = "followNearbyPlayer", cancellable = true)
-    private void onFollowNearbyPlayer(CallbackInfo ci) {
+    /** Target cached before vanilla's fixed-eight-block scan mutates it. */
+    @Unique private Player pickuprange$targetBeforeScan;
+
+    /** Target hidden from the inline vanilla force and restored before movement. */
+    @Unique private Player pickuprange$suspendedTarget;
+
+    @Inject(method = "scanForEntities", at = @At("HEAD"))
+    private void rememberConfiguredTarget(CallbackInfo ci) {
         ExperienceOrb self = (ExperienceOrb) (Object) this;
+        if (!self.getLevel().isClientSide) {
+            this.pickuprange$targetBeforeScan = this.followingPlayer;
+        }
+    }
 
-        // Keep the client path untouched; it provides vanilla prediction/render motion.
-        if (self.level().isClientSide()) return;
+    /** Preserve merge scanning while replacing only its fixed-radius target result. */
+    @Inject(method = "scanForEntities", at = @At("TAIL"))
+    private void selectConfiguredTarget(CallbackInfo ci) {
+        ExperienceOrb self = (ExperienceOrb) (Object) this;
+        if (self.getLevel().isClientSide) return;
 
-        ServerConfig config = PickupRangeMod.getServerConfig();
+        Player cached = this.pickuprange$targetBeforeScan;
+        this.pickuprange$targetBeforeScan = null;
+
+        // Vanilla keeps its cached target until the periodic scan finds that the
+        // entity-position distance exceeds the selection radius. Do the same with
+        // that player's configured radius, rather than reselecting every tick.
+        if (cached != null && pickuprange$isInsideSelectionRange(cached, self)) {
+            this.followingPlayer = cached;
+            return;
+        }
+
         Player nearest = null;
         double nearestDistanceSq = Double.POSITIVE_INFINITY;
-        double nearestEffectiveRange = 0.0;
-
-        // getNearestPlayer cannot express a different maximum distance per player. The
-        // server player list is normally small and avoids a large entity-volume query.
-        for (Player player : self.level().players()) {
+        for (Player player : self.getLevel().players()) {
             if (player.isSpectator() || player.isDeadOrDying()) continue;
 
-            double rawRange = PlayerRangeManager.getEffectiveXpRange(player);
-            if (!Double.isFinite(rawRange)) continue;
-            double effectiveRange = config.clamp(rawRange);
+            double range = pickuprange$effectiveRange(player);
+            if (!Double.isFinite(range) || range <= 0.0) continue;
 
-            Vec3 delta = player.position()
-                    .add(0.0, player.getBbHeight() * 0.5, 0.0)
-                    .subtract(self.position());
-            double distanceSq = delta.lengthSqr();
-            if (distanceSq > effectiveRange * effectiveRange) continue;
+            // Target selection intentionally uses entity positions, matching
+            // Level#getNearestPlayer and vanilla cached-target retention.
+            double distanceSq = player.distanceToSqr(self);
+            if (distanceSq > range * range || distanceSq >= nearestDistanceSq) continue;
 
-            if (distanceSq < nearestDistanceSq) {
-                nearest = player;
-                nearestDistanceSq = distanceSq;
-                nearestEffectiveRange = effectiveRange;
-            }
+            nearest = player;
+            nearestDistanceSq = distanceSq;
         }
-
         this.followingPlayer = nearest;
+    }
 
-        if (nearest != null) {
-            // This is vanilla's force formula with 8.0 replaced by the effective range.
-            Vec3 delta = nearest.position()
-                    .add(0.0, nearest.getBbHeight() * 0.5, 0.0)
-                    .subtract(self.position());
-            double strength = 1.0 - Math.sqrt(delta.lengthSqr()) / nearestEffectiveRange;
+    /**
+     * Temporarily hides the cached target from the fixed-eight-block force in tick().
+     * The target is restored at the movement call below, so its vanilla lifetime is kept.
+     */
+    @Inject(method = "tick", at = @At(value = "FIELD",
+            target = "Lnet/minecraft/world/entity/ExperienceOrb;followingPlayer:Lnet/minecraft/world/entity/player/Player;",
+            opcode = Opcodes.GETFIELD, ordinal = 0))
+    private void suspendVanillaAttraction(CallbackInfo ci) {
+        ExperienceOrb self = (ExperienceOrb) (Object) this;
+        if (self.getLevel().isClientSide) return;
 
-            self.setDeltaMovement(self.getDeltaMovement().add(
-                    delta.normalize().scale(strength * strength * 0.1)));
+        Player target = this.followingPlayer;
+        if (target != null && (target.isSpectator() || target.isDeadOrDying())) {
+            target = null;
         }
+        this.pickuprange$suspendedTarget = target;
+        this.followingPlayer = null;
+    }
 
-        ci.cancel();
+    @Inject(method = "tick", at = @At(value = "INVOKE",
+            target = "Lnet/minecraft/world/entity/ExperienceOrb;move(Lnet/minecraft/world/entity/MoverType;Lnet/minecraft/world/phys/Vec3;)V"))
+    private void applyConfiguredAttraction(CallbackInfo ci) {
+        ExperienceOrb self = (ExperienceOrb) (Object) this;
+        if (self.getLevel().isClientSide) return;
+
+        Player target = this.pickuprange$suspendedTarget;
+        this.pickuprange$suspendedTarget = null;
+        this.followingPlayer = target;
+        if (target == null || self.isRemoved()) return;
+
+        double range = pickuprange$effectiveRange(target);
+        if (!Double.isFinite(range) || range <= 0.0) return;
+
+        // Exact 1.19.4 vanilla force geometry: X/Z from entity positions and Y at
+        // half eye height. This differs slightly from half bounding-box height.
+        Vec3 delta = new Vec3(
+                target.getX() - self.getX(),
+                target.getY() + target.getEyeHeight() / 2.0 - self.getY(),
+                target.getZ() - self.getZ());
+        double forceDistanceSq = delta.lengthSqr();
+        if (forceDistanceSq >= range * range) return;
+
+        // The force-vector distance can exceed the entity-position selection distance,
+        // especially for sub-block ranges. Guard it before squaring the strength.
+        double strength = Math.max(0.0, 1.0 - Math.sqrt(forceDistanceSq) / range);
+        if (strength <= 0.0) return;
+        self.setDeltaMovement(self.getDeltaMovement().add(
+                delta.normalize().scale(strength * strength * 0.1)));
+    }
+
+    @Unique
+    private static boolean pickuprange$isInsideSelectionRange(Player player, ExperienceOrb orb) {
+        double range = pickuprange$effectiveRange(player);
+        return Double.isFinite(range) && range > 0.0
+                && player.distanceToSqr(orb) <= range * range;
+    }
+
+    @Unique
+    private static double pickuprange$effectiveRange(Player player) {
+        ServerConfig config = PickupRangeMod.getServerConfig();
+        double rawRange = PlayerRangeManager.getEffectiveXpRange(player);
+        return Double.isFinite(rawRange) ? config.clamp(rawRange) : Double.NaN;
     }
 }

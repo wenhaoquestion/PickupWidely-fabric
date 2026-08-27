@@ -1,15 +1,14 @@
 package com.example.pickuprange.client;
 
 import com.example.pickuprange.PickupRangeClientMod;
+import com.mojang.blaze3d.vertex.PoseStack;
 import net.fabricmc.api.EnvType;
 import net.fabricmc.api.Environment;
 import net.minecraft.client.Minecraft;
-import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.components.AbstractSliderButton;
 import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.gui.components.EditBox;
 import net.minecraft.client.gui.screens.Screen;
-import net.minecraft.client.input.KeyEvent;
 import net.minecraft.network.chat.Component;
 import org.lwjgl.glfw.GLFW;
 
@@ -119,14 +118,14 @@ public class PickupRangeScreen extends Screen {
     }
 
     @Override
-    public void render(GuiGraphics graphics, int mouseX, int mouseY, float delta) {
-        super.render(graphics, mouseX, mouseY, delta);
+    public void render(PoseStack poseStack, int mouseX, int mouseY, float delta) {
+        super.render(poseStack, mouseX, mouseY, delta);
 
         int cx = width  / 2;
         int cy = height / 2;
 
         // Title
-        graphics.drawCenteredString(font, title, cx, cy - 84, 0xFFFFFF);
+        drawCenteredString(poseStack, font, title, cx, cy - 84, 0xFFFFFF);
     }
 
     @Override
@@ -145,8 +144,8 @@ public class PickupRangeScreen extends Screen {
     }
 
     @Override
-    public boolean keyPressed(KeyEvent keyEvent) {
-        if (keyEvent.key() == GLFW.GLFW_KEY_ENTER || keyEvent.key() == GLFW.GLFW_KEY_KP_ENTER) {
+    public boolean keyPressed(int keyCode, int scanCode, int modifiers) {
+        if (keyCode == GLFW.GLFW_KEY_ENTER || keyCode == GLFW.GLFW_KEY_KP_ENTER) {
             if (itemInput != null && itemInput.isFocused()) {
                 commitRangeInput(itemInput, itemSlider);
                 return true;
@@ -156,7 +155,7 @@ public class PickupRangeScreen extends Screen {
                 return true;
             }
         }
-        return super.keyPressed(keyEvent);
+        return super.keyPressed(keyCode, scanCode, modifiers);
     }
 
     /** Sends the pending values as commands and closes the screen. */
@@ -309,12 +308,21 @@ public class PickupRangeScreen extends Screen {
 
         private void setActualValue(double actualValue) {
             if (max <= min) {
-                setValue(0.0);
+                setNormalizedValue(0.0);
                 return;
             }
 
             double clamped = clamp(normalizeRange(actualValue), min, max);
-            setValue((clamped - min) / (max - min));
+            setNormalizedValue((clamped - min) / (max - min));
+        }
+
+        private void setNormalizedValue(double normalizedValue) {
+            double clamped = clamp(normalizedValue, 0.0, 1.0);
+            if (Double.compare(value, clamped) != 0) {
+                value = clamped;
+                applyValue();
+            }
+            updateMessage();
         }
 
         @Override

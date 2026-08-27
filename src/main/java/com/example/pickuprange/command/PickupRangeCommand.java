@@ -50,7 +50,7 @@ public final class PickupRangeCommand {
                 .then(Commands.literal("get")
                     .executes(ctx -> executeGet(ctx.getSource(), null))
                     .then(Commands.argument("player", EntityArgument.player())
-                        .requires(Commands.hasPermission(Commands.LEVEL_ADMINS))
+                        .requires(source -> source.hasPermission(2))
                         .executes(ctx -> executeGet(ctx.getSource(),
                                 EntityArgument.getPlayer(ctx, "player")))))
 
@@ -61,7 +61,7 @@ public final class PickupRangeCommand {
                                 DoubleArgumentType.getDouble(ctx, "range"))))
                     // /pickuprange set <player> <range>  (op only)
                     .then(Commands.argument("player", EntityArgument.player())
-                        .requires(Commands.hasPermission(Commands.LEVEL_ADMINS))
+                        .requires(source -> source.hasPermission(2))
                         .then(Commands.argument("range", DoubleArgumentType.doubleArg(0.0))
                             .executes(ctx -> executeSetOther(ctx.getSource(),
                                     EntityArgument.getPlayer(ctx, "player"),
@@ -74,7 +74,7 @@ public final class PickupRangeCommand {
                                 DoubleArgumentType.getDouble(ctx, "range"))))
                     // /pickuprange setxp <player> <range>  (op only)
                     .then(Commands.argument("player", EntityArgument.player())
-                        .requires(Commands.hasPermission(Commands.LEVEL_ADMINS))
+                        .requires(source -> source.hasPermission(2))
                         .then(Commands.argument("range", DoubleArgumentType.doubleArg(0.0))
                             .executes(ctx -> executeSetXpOther(ctx.getSource(),
                                     EntityArgument.getPlayer(ctx, "player"),
@@ -84,13 +84,13 @@ public final class PickupRangeCommand {
                 .then(Commands.literal("reset")
                     .executes(ctx -> executeReset(ctx.getSource(), null))
                     .then(Commands.argument("player", EntityArgument.player())
-                        .requires(Commands.hasPermission(Commands.LEVEL_ADMINS))
+                        .requires(source -> source.hasPermission(2))
                         .executes(ctx -> executeReset(ctx.getSource(),
                                 EntityArgument.getPlayer(ctx, "player")))))
 
                 // /pickuprange reload  (op level 2)
                 .then(Commands.literal("reload")
-                    .requires(Commands.hasPermission(Commands.LEVEL_ADMINS))
+                    .requires(source -> source.hasPermission(2))
                     .executes(ctx -> executeReload(ctx.getSource())))
         );
     }
@@ -106,14 +106,14 @@ public final class PickupRangeCommand {
             ServerPlayer self = source.getPlayerOrException();
             double item = PlayerRangeManager.getEffectiveItemRange(self);
             double xp   = PlayerRangeManager.getEffectiveXpRange(self);
-            source.sendSuccess(() ->
+            source.sendSuccess(
                 Component.translatable("pickuprange.command.get.self",
                     format1(item), format1(xp)), false);
         } else {
             double item = PlayerRangeManager.getEffectiveItemRange(target);
             double xp   = PlayerRangeManager.getEffectiveXpRange(target);
             String name = target.getName().getString();
-            source.sendSuccess(() ->
+            source.sendSuccess(
                 Component.translatable("pickuprange.command.get.other",
                     name, format1(item), format1(xp)), false);
         }
@@ -140,7 +140,7 @@ public final class PickupRangeCommand {
         pushRangeToClient(self);
 
         double displayValue = clamped;
-        source.sendSuccess(() ->
+        source.sendSuccess(
             Component.translatable("pickuprange.command.set.self", format1(displayValue)), true);
         return 1;
     }
@@ -151,7 +151,7 @@ public final class PickupRangeCommand {
         pushRangeToClient(target);
 
         String name = target.getName().getString();
-        source.sendSuccess(() ->
+        source.sendSuccess(
             Component.translatable("pickuprange.command.set.other",
                 name, format1(clamped)), true);
         return 1;
@@ -176,7 +176,7 @@ public final class PickupRangeCommand {
         PlayerRangeManager.setXpRange(self.getUUID(), clamped);
         pushRangeToClient(self);
 
-        source.sendSuccess(() ->
+        source.sendSuccess(
             Component.translatable("pickuprange.command.set.xp.self", format1(clamped)), true);
         return 1;
     }
@@ -187,7 +187,7 @@ public final class PickupRangeCommand {
         pushRangeToClient(target);
 
         String name = target.getName().getString();
-        source.sendSuccess(() ->
+        source.sendSuccess(
             Component.translatable("pickuprange.command.set.xp.other",
                 name, format1(clamped)), true);
         return 1;
@@ -214,14 +214,14 @@ public final class PickupRangeCommand {
 
             double di = config.getDefaultItemRange();
             double dx = config.getDefaultXpRange();
-            source.sendSuccess(() ->
+            source.sendSuccess(
                 Component.translatable("pickuprange.command.reset.self",
                     format1(di), format1(dx)), true);
         } else {
             PlayerRangeManager.resetRange(target.getUUID());
             pushRangeToClient(target);
             String name = target.getName().getString();
-            source.sendSuccess(() ->
+            source.sendSuccess(
                 Component.translatable("pickuprange.command.reset.other", name), true);
         }
         return 1;
@@ -235,7 +235,7 @@ public final class PickupRangeCommand {
         PickupRangeMod.setServerConfig(newConfig);
         ModPackets.broadcastConfigReload(source.getServer(), newConfig);
 
-        source.sendSuccess(() -> Component.translatable("pickuprange.command.reload"), true);
+        source.sendSuccess(Component.translatable("pickuprange.command.reload"), true);
         PickupRangeMod.LOGGER.info("Config reloaded by {}.", source.getTextName());
         return 1;
     }
@@ -255,7 +255,7 @@ public final class PickupRangeCommand {
     }
 
     private static boolean hasAdminPermission(CommandSourceStack source) {
-        return Commands.LEVEL_ADMINS.check(source.permissions());
+        return source.hasPermission(2);
     }
 
     /**

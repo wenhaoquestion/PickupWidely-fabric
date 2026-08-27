@@ -1,24 +1,10 @@
 package com.example.pickuprange.network;
 
-import com.example.pickuprange.PickupRangeMod;
 import net.minecraft.network.FriendlyByteBuf;
-import net.minecraft.network.codec.ByteBufCodecs;
-import net.minecraft.network.codec.StreamCodec;
-import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
-import net.minecraft.resources.Identifier;
 
 /**
- * Server → Client payload that pushes the active server configuration to the client.
- *
- * <p>Sent on player join (if the client has the mod) and after {@code /pickuprange reload}.
- *
- * <p>VERSION-SENSITIVE: {@link StreamCodec} and {@link ByteBufCodecs} were introduced in 1.20.5.
- *
- * @param defaultItemRange    server default item pickup range
- * @param defaultXpRange      server default XP orb pickup range
- * @param maxRange            hard cap on player-settable range
- * @param minRange            hard floor on player-settable range
- * @param allowPlayerOverride whether players may change their own range via the GUI or commands
+ * Server-to-client config snapshot for the legacy (pre-1.20.5) Fabric
+ * identifier-and-buffer networking API.
  */
 public record SyncConfigPayload(
         double defaultItemRange,
@@ -26,24 +12,21 @@ public record SyncConfigPayload(
         double maxRange,
         double minRange,
         boolean allowPlayerOverride
-) implements CustomPacketPayload {
+) {
+    public void write(FriendlyByteBuf buf) {
+        buf.writeDouble(defaultItemRange);
+        buf.writeDouble(defaultXpRange);
+        buf.writeDouble(maxRange);
+        buf.writeDouble(minRange);
+        buf.writeBoolean(allowPlayerOverride);
+    }
 
-    public static final CustomPacketPayload.Type<SyncConfigPayload> TYPE =
-            new CustomPacketPayload.Type<>(
-                    Identifier.fromNamespaceAndPath(PickupRangeMod.MOD_ID, "sync_config"));
-
-    public static final StreamCodec<FriendlyByteBuf, SyncConfigPayload> CODEC =
-            StreamCodec.composite(
-                    ByteBufCodecs.DOUBLE, SyncConfigPayload::defaultItemRange,
-                    ByteBufCodecs.DOUBLE, SyncConfigPayload::defaultXpRange,
-                    ByteBufCodecs.DOUBLE, SyncConfigPayload::maxRange,
-                    ByteBufCodecs.DOUBLE, SyncConfigPayload::minRange,
-                    ByteBufCodecs.BOOL,   SyncConfigPayload::allowPlayerOverride,
-                    SyncConfigPayload::new
-            );
-
-    @Override
-    public CustomPacketPayload.Type<? extends CustomPacketPayload> type() {
-        return TYPE;
+    public static SyncConfigPayload read(FriendlyByteBuf buf) {
+        return new SyncConfigPayload(
+                buf.readDouble(),
+                buf.readDouble(),
+                buf.readDouble(),
+                buf.readDouble(),
+                buf.readBoolean());
     }
 }

@@ -4,6 +4,14 @@ All notable changes to Pickup Range are documented here.
 
 ---
 
+## [2.0.0+1.19.4] — 2026-08-26
+
+- Ported the complete 2.0 feature set to Fabric for Minecraft 1.19.4 and Java 17.
+- Added legacy Fabric channel-buffer networking for config and per-player range sync.
+- Adapted the settings screen, key binding, commands, and XP attraction mixin to 1.19.4 APIs.
+
+---
+
 ## [2.0.0] — 2026-08-26
 
 Complete rewrite of the mod.
@@ -27,7 +35,7 @@ Complete rewrite of the mod.
 - Logger migrated from `java.util.logging.Logger` to `org.slf4j.Logger` (Fabric standard)
 - Pickup radius type changed from `byte` (max 127) to `double` (default bounds 0.5–64.0)
 - Config format changed from `.properties` to JSON
-- Minimum Java version raised from 17 to 21 (required for Minecraft 1.21+)
+- Java 17 target retained for the Minecraft 1.19.4 port
 
 ### Fixed
 - Original mixin only searched for one nearby player — now handles multiple players

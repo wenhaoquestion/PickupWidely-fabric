@@ -18,9 +18,7 @@ repositories {
 dependencies {
     minecraft "com.mojang:minecraft:${project.minecraft_version}"
 
-    // Use Mojang official mappings instead of Yarn.
-    // Critical: versions after 1.21.11 are unobfuscated and Yarn will not be updated.
-    // VERSION-SENSITIVE: loom.officialMojangMappings() is the forward-compatible choice.
+    // Keep Mojang names aligned with the 2.0 source shared by newer ports.
     mappings loom.officialMojangMappings()
 
     modImplementation "net.fabricmc:fabric-loader:${project.loader_version}"
@@ -36,15 +34,15 @@ processResources {
 }
 
 tasks.withType(JavaCompile).configureEach {
-    it.options.release = 21
+    it.options.release = 17
 }
 
 java {
-    sourceCompatibility = JavaVersion.VERSION_21
-    targetCompatibility = JavaVersion.VERSION_21
+    sourceCompatibility = JavaVersion.VERSION_17
+    targetCompatibility = JavaVersion.VERSION_17
     withSourcesJar()
     toolchain {
-        languageVersion = JavaLanguageVersion.of(21)
+        languageVersion = JavaLanguageVersion.of(17)
     }
 }
 
