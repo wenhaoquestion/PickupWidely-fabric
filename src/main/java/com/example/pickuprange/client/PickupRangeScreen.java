@@ -3,255 +3,187 @@ package com.example.pickuprange.client;
 import com.example.pickuprange.PickupRangeClientMod;
 import net.fabricmc.api.EnvType;
 import net.fabricmc.api.Environment;
-import net.minecraft.client.Minecraft;
-import net.minecraft.client.gui.GuiGraphics;
-import net.minecraft.client.gui.components.AbstractSliderButton;
-import net.minecraft.client.gui.components.Button;
-import net.minecraft.client.gui.components.EditBox;
-import net.minecraft.client.gui.screens.Screen;
-import net.minecraft.client.input.KeyEvent;
-import net.minecraft.network.chat.Component;
+import net.minecraft.client.MinecraftClient;
+import net.minecraft.client.gui.screen.Screen;
+import net.minecraft.client.gui.widget.ButtonWidget;
+import net.minecraft.client.gui.widget.SliderWidget;
+import net.minecraft.client.gui.widget.TextFieldWidget;
+import net.minecraft.client.util.math.MatrixStack;
+import net.minecraft.text.LiteralText;
+import net.minecraft.text.Text;
+import net.minecraft.text.TranslatableText;
 import org.lwjgl.glfw.GLFW;
 
 import java.util.Locale;
 import java.util.function.Consumer;
 import java.util.regex.Pattern;
 
-/**
- * In-game GUI screen that lets players adjust their item and XP pickup ranges
- * using sliders or direct numeric inputs, without needing to type commands.
- *
- * <p>Opened via the configurable keybind (default: {@code R}).
- *
- * <p>Clicking <b>Apply</b> sends {@code /pickuprange set} and {@code /pickuprange setxp}
- * to the server. The server enforces permissions: if {@code allowPlayerOverride} is false,
- * the commands will be rejected and the player will see a chat error — no special handling
- * needed here.
- *
- * <p>The sliders are clamped to the server-provided {@code [minRange, maxRange]} bounds,
- * received via {@link com.example.pickuprange.network.SyncConfigPayload} on join.
- * Before server sync, the sliders use the default 0.5–64.0 bounds.
- */
 @Environment(EnvType.CLIENT)
-public class PickupRangeScreen extends Screen {
-
-    private static final int PANEL_W  = 240;
-    private static final int PANEL_H  = 192;
-    private static final int SLIDER_W = 200;
-    private static final int SLIDER_H = 20;
-    private static final int INPUT_W  = 72;
-    private static final int BTN_W    = 96;
+public final class PickupRangeScreen extends Screen {
+    private static final int SLIDER_WIDTH = 200;
+    private static final int HEIGHT = 20;
+    private static final int INPUT_WIDTH = 72;
+    private static final int BUTTON_WIDTH = 96;
     private static final Pattern RANGE_INPUT = Pattern.compile("\\d*(\\.\\d*)?");
 
-    // Values being edited (updated by sliders in real time).
     private double pendingItemRange;
     private double pendingXpRange;
     private RangeSlider itemSlider;
     private RangeSlider xpSlider;
-    private EditBox itemInput;
-    private EditBox xpInput;
-    private boolean syncingTextFields;
-    private boolean wasItemInputFocused;
-    private boolean wasXpInputFocused;
+    private TextFieldWidget itemInput;
+    private TextFieldWidget xpInput;
+    private boolean syncingText;
 
     public PickupRangeScreen() {
-        super(Component.translatable("pickuprange.screen.title"));
-        this.pendingItemRange = PickupRangeClientMod.getClientItemRange();
-        this.pendingXpRange   = PickupRangeClientMod.getClientXpRange();
+        super(new TranslatableText("pickuprange.screen.title"));
+        pendingItemRange = PickupRangeClientMod.getClientItemRange();
+        pendingXpRange = PickupRangeClientMod.getClientXpRange();
     }
 
     @Override
     protected void init() {
-        int cx = width  / 2;
-        int cy = height / 2;
-        int sliderX = cx - SLIDER_W / 2;
-        int inputX = cx - INPUT_W / 2;
-
+        int centerX = width / 2;
+        int centerY = height / 2;
         double min = PickupRangeClientMod.getClientMinRange();
         double max = PickupRangeClientMod.getClientMaxRange();
-        int itemSliderY = cy - 52;
-        int itemInputY = itemSliderY + 24;
-        int xpSliderY = cy + 2;
-        int xpInputY = xpSliderY + 24;
-        int buttonY = cy + 58;
 
-        // --- Item range slider ---
-        itemSlider = addRenderableWidget(new RangeSlider(
-                sliderX, itemSliderY, SLIDER_W, SLIDER_H,
-                Component.translatable("pickuprange.screen.item_range"),
-                pendingItemRange, min, max,
-                this::onItemSliderChanged
-        ));
-        itemInput = addRenderableWidget(createRangeInput(
-                inputX, itemInputY,
-                Component.translatable("pickuprange.screen.item_range"),
-                itemSlider, pendingItemRange
-        ));
+        itemSlider = addButton(new RangeSlider(
+                centerX - SLIDER_WIDTH / 2, centerY - 52, SLIDER_WIDTH, HEIGHT,
+                new TranslatableText("pickuprange.screen.item_range"),
+                pendingItemRange, min, max, value -> {
+                    pendingItemRange = value;
+                    if (itemInput != null && !itemInput.isFocused()) {
+                        syncInput(itemInput, value);
+                    }
+                }));
 
-        // --- XP range slider ---
-        xpSlider = addRenderableWidget(new RangeSlider(
-                sliderX, xpSliderY, SLIDER_W, SLIDER_H,
-                Component.translatable("pickuprange.screen.xp_range"),
-                pendingXpRange, min, max,
-                this::onXpSliderChanged
-        ));
-        xpInput = addRenderableWidget(createRangeInput(
-                inputX, xpInputY,
-                Component.translatable("pickuprange.screen.xp_range"),
-                xpSlider, pendingXpRange
-        ));
+        itemInput = addButton(createInput(centerX - INPUT_WIDTH / 2, centerY - 28,
+                new TranslatableText("pickuprange.screen.item_range"),
+                itemSlider, pendingItemRange));
 
-        // --- Apply button ---
-        addRenderableWidget(Button.builder(
-                Component.translatable("pickuprange.screen.apply"),
-                btn -> applyAndClose()
-        ).bounds(cx - BTN_W - 4, buttonY, BTN_W, SLIDER_H).build());
+        xpSlider = addButton(new RangeSlider(
+                centerX - SLIDER_WIDTH / 2, centerY + 2, SLIDER_WIDTH, HEIGHT,
+                new TranslatableText("pickuprange.screen.xp_range"),
+                pendingXpRange, min, max, value -> {
+                    pendingXpRange = value;
+                    if (xpInput != null && !xpInput.isFocused()) {
+                        syncInput(xpInput, value);
+                    }
+                }));
 
-        // --- Cancel button ---
-        addRenderableWidget(Button.builder(
-                Component.translatable("gui.cancel"),
-                btn -> onClose()
-        ).bounds(cx + 4, buttonY, BTN_W, SLIDER_H).build());
+        xpInput = addButton(createInput(centerX - INPUT_WIDTH / 2, centerY + 26,
+                new TranslatableText("pickuprange.screen.xp_range"),
+                xpSlider, pendingXpRange));
 
-        setInitialFocus(itemInput);
-        wasItemInputFocused = itemInput.isFocused();
-        wasXpInputFocused = xpInput.isFocused();
-    }
+        addButton(new ButtonWidget(
+                centerX - BUTTON_WIDTH - 4, centerY + 58, BUTTON_WIDTH, HEIGHT,
+                new TranslatableText("pickuprange.screen.apply"),
+                button -> applyAndClose()));
 
-    @Override
-    public void render(GuiGraphics graphics, int mouseX, int mouseY, float delta) {
-        super.render(graphics, mouseX, mouseY, delta);
+        addButton(new ButtonWidget(
+                centerX + 4, centerY + 58, BUTTON_WIDTH, HEIGHT,
+                new TranslatableText("gui.cancel"),
+                button -> onClose()));
 
-        int cx = width  / 2;
-        int cy = height / 2;
-
-        // Title
-        graphics.drawCenteredString(font, title, cx, cy - 84, 0xFFFFFF);
+        setFocused(itemInput);
+        itemInput.setTextFieldFocused(true);
     }
 
     @Override
     public void tick() {
-        super.tick();
-
-        if (wasItemInputFocused && !itemInput.isFocused()) {
-            commitRangeInput(itemInput, itemSlider);
+        if (itemInput != null) {
+            itemInput.tick();
         }
-        if (wasXpInputFocused && !xpInput.isFocused()) {
-            commitRangeInput(xpInput, xpSlider);
+        if (xpInput != null) {
+            xpInput.tick();
         }
-
-        wasItemInputFocused = itemInput.isFocused();
-        wasXpInputFocused = xpInput.isFocused();
     }
 
     @Override
-    public boolean keyPressed(KeyEvent keyEvent) {
-        if (keyEvent.key() == GLFW.GLFW_KEY_ENTER || keyEvent.key() == GLFW.GLFW_KEY_KP_ENTER) {
+    public void render(MatrixStack matrices, int mouseX, int mouseY, float delta) {
+        renderBackground(matrices);
+        super.render(matrices, mouseX, mouseY, delta);
+        drawCenteredText(matrices, textRenderer, title, width / 2, height / 2 - 84, 0xFFFFFF);
+    }
+
+    @Override
+    public boolean keyPressed(int keyCode, int scanCode, int modifiers) {
+        if (keyCode == GLFW.GLFW_KEY_ENTER || keyCode == GLFW.GLFW_KEY_KP_ENTER) {
             if (itemInput != null && itemInput.isFocused()) {
-                commitRangeInput(itemInput, itemSlider);
+                commitInput(itemInput, itemSlider);
                 return true;
             }
             if (xpInput != null && xpInput.isFocused()) {
-                commitRangeInput(xpInput, xpSlider);
+                commitInput(xpInput, xpSlider);
                 return true;
             }
         }
-        return super.keyPressed(keyEvent);
+        return super.keyPressed(keyCode, scanCode, modifiers);
     }
 
-    /** Sends the pending values as commands and closes the screen. */
-    private void applyAndClose() {
-        commitRangeInput(itemInput, itemSlider);
-        commitRangeInput(xpInput, xpSlider);
-
-        var connection = Minecraft.getInstance().getConnection();
-        if (connection != null) {
-            connection.sendCommand("pickuprange set " + formatRange(pendingItemRange));
-            connection.sendCommand("pickuprange setxp " + formatRange(pendingXpRange));
-        }
-        onClose();
-    }
-
-    /** The screen should not pause the game in multiplayer. */
     @Override
     public boolean isPauseScreen() {
         return false;
     }
 
-    private EditBox createRangeInput(int x, int y, Component label, RangeSlider slider, double initialValue) {
-        EditBox input = new EditBox(font, x, y, INPUT_W, SLIDER_H, label);
+    private TextFieldWidget createInput(int x, int y, Text label,
+                                        RangeSlider slider, double initial) {
+        TextFieldWidget input = new TextFieldWidget(textRenderer, x, y,
+                INPUT_WIDTH, HEIGHT, label);
         input.setMaxLength(8);
-        input.setHint(Component.literal(formatRange(slider.getMin()) + " - " + formatRange(slider.getMax())));
-        input.setFilter(text -> RANGE_INPUT.matcher(text).matches());
-        input.setValue(formatRange(initialValue));
-        input.setResponder(text -> onRangeInputChanged(input, slider, text));
+        input.setSuggestion(format(slider.getMin()) + " - " + format(slider.getMax()));
+        input.setTextPredicate(text -> RANGE_INPUT.matcher(text).matches());
+        input.setText(format(initial));
+        input.setChangedListener(text -> {
+            if (syncingText) {
+                return;
+            }
+            Double parsed = parse(text);
+            if (parsed != null && parsed >= slider.getMin() && parsed <= slider.getMax()) {
+                slider.setActualValue(parsed);
+            }
+        });
         return input;
     }
 
-    private void onItemSliderChanged(double value) {
-        pendingItemRange = value;
-        if (itemInput != null && !itemInput.isFocused()) {
-            syncInputValue(itemInput, value);
+    private void applyAndClose() {
+        commitInput(itemInput, itemSlider);
+        commitInput(xpInput, xpSlider);
+
+        MinecraftClient client = MinecraftClient.getInstance();
+        if (client.player != null) {
+            client.player.sendChatMessage("/pickuprange set " + format(pendingItemRange));
+            client.player.sendChatMessage("/pickuprange setxp " + format(pendingXpRange));
         }
+        onClose();
     }
 
-    private void onXpSliderChanged(double value) {
-        pendingXpRange = value;
-        if (xpInput != null && !xpInput.isFocused()) {
-            syncInputValue(xpInput, value);
-        }
-    }
-
-    private void onRangeInputChanged(EditBox input, RangeSlider slider, String text) {
-        if (syncingTextFields) {
-            return;
-        }
-
-        Double parsed = parseRange(text);
-        if (parsed == null) {
-            return;
-        }
-
-        double normalized = normalizeRange(parsed);
-        if (normalized < slider.getMin() || normalized > slider.getMax()) {
-            return;
-        }
-        slider.setActualValue(normalized);
-    }
-
-    private void commitRangeInput(EditBox input, RangeSlider slider) {
-        if (input == null || slider == null) {
-            return;
-        }
-
-        Double parsed = parseRange(input.getValue());
-        double committed = parsed != null
-                ? clamp(normalizeRange(parsed), slider.getMin(), slider.getMax())
+    private void commitInput(TextFieldWidget input, RangeSlider slider) {
+        Double parsed = parse(input.getText());
+        double value = parsed != null ? clamp(round(parsed), slider.getMin(), slider.getMax())
                 : slider.getActualValue();
-
-        slider.setActualValue(committed);
-        syncInputValue(input, committed);
+        slider.setActualValue(value);
+        syncInput(input, value);
     }
 
-    private void syncInputValue(EditBox input, double value) {
-        syncingTextFields = true;
-        input.setValue(formatRange(value));
-        syncingTextFields = false;
+    private void syncInput(TextFieldWidget input, double value) {
+        syncingText = true;
+        input.setText(format(value));
+        syncingText = false;
     }
 
-    private static Double parseRange(String text) {
-        if (text == null || text.isBlank() || ".".equals(text)) {
+    private static Double parse(String text) {
+        if (text == null || text.trim().isEmpty() || ".".equals(text)) {
             return null;
         }
-
         try {
-            return Double.parseDouble(text);
+            return Double.valueOf(text);
         } catch (NumberFormatException ignored) {
             return null;
         }
     }
 
-    private static double normalizeRange(double value) {
+    private static double round(double value) {
         return Math.round(value * 10.0) / 10.0;
     }
 
@@ -259,44 +191,29 @@ public class PickupRangeScreen extends Screen {
         return Math.max(min, Math.min(max, value));
     }
 
-    private static String formatRange(double value) {
-        return String.format(Locale.ROOT, "%.1f", normalizeRange(value));
+    private static String format(double value) {
+        return String.format(Locale.ROOT, "%.1f", round(value));
     }
 
-    // -------------------------------------------------------------------------
-    // Inner slider widget
-    // -------------------------------------------------------------------------
-
-    /**
-     * A horizontal slider that maps a [min, max] double range onto the [0, 1] internal value
-     * of {@link AbstractSliderButton} and displays the current value with its label.
-     */
-    @Environment(EnvType.CLIENT)
-    private static final class RangeSlider extends AbstractSliderButton {
-
-        private final Component label;
+    private static final class RangeSlider extends SliderWidget {
+        private final Text label;
         private final double min;
         private final double max;
-        private final Consumer<Double> onChange;
+        private final Consumer<Double> listener;
 
-        RangeSlider(int x, int y, int width, int height,
-                    Component label,
-                    double initial, double min, double max,
-                    Consumer<Double> onChange) {
-            super(x, y, width, height, Component.empty(), 0.0);
-            this.label    = label;
-            this.min      = min;
-            this.max      = max;
-            this.onChange = onChange;
+        private RangeSlider(int x, int y, int width, int height, Text label,
+                            double initial, double min, double max,
+                            Consumer<Double> listener) {
+            super(x, y, width, height, new LiteralText(""), 0.0);
+            this.label = label;
+            this.min = min;
+            this.max = max;
+            this.listener = listener;
             setActualValue(initial);
         }
 
-        /** Returns the actual value in [min, max] from the normalized slider position. */
         private double getActualValue() {
-            if (max <= min) {
-                return normalizeRange(min);
-            }
-            return normalizeRange(min + value * (max - min));
+            return max <= min ? round(min) : round(min + value * (max - min));
         }
 
         private double getMin() {
@@ -307,24 +224,20 @@ public class PickupRangeScreen extends Screen {
             return max;
         }
 
-        private void setActualValue(double actualValue) {
-            if (max <= min) {
-                setValue(0.0);
-                return;
-            }
-
-            double clamped = clamp(normalizeRange(actualValue), min, max);
-            setValue((clamped - min) / (max - min));
+        private void setActualValue(double actual) {
+            value = max <= min ? 0.0 : (clamp(round(actual), min, max) - min) / (max - min);
+            updateMessage();
+            applyValue();
         }
 
         @Override
         protected void updateMessage() {
-            setMessage(Component.literal(label.getString() + ": " + formatRange(getActualValue())));
+            setMessage(new LiteralText(label.getString() + ": " + format(getActualValue())));
         }
 
         @Override
         protected void applyValue() {
-            onChange.accept(getActualValue());
+            listener.accept(getActualValue());
         }
     }
 }

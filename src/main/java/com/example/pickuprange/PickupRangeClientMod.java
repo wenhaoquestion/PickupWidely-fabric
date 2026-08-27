@@ -6,8 +6,8 @@ import net.fabricmc.api.ClientModInitializer;
 import net.fabricmc.api.EnvType;
 import net.fabricmc.api.Environment;
 import net.fabricmc.loader.api.FabricLoader;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 
 import java.nio.file.Path;
 
@@ -21,7 +21,7 @@ import java.nio.file.Path;
 @Environment(EnvType.CLIENT)
 public class PickupRangeClientMod implements ClientModInitializer {
 
-    private static final Logger LOGGER = LoggerFactory.getLogger("PickupRange/Client");
+    private static final Logger LOGGER = LogManager.getLogger("PickupRange/Client");
 
     private static ClientConfig clientConfig;
 

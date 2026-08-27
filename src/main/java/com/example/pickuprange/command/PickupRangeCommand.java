@@ -7,265 +7,177 @@ import com.example.pickuprange.network.ModPackets;
 import com.mojang.brigadier.CommandDispatcher;
 import com.mojang.brigadier.arguments.DoubleArgumentType;
 import com.mojang.brigadier.exceptions.CommandSyntaxException;
+import net.fabricmc.fabric.api.networking.v1.ServerPlayNetworking;
 import net.fabricmc.loader.api.FabricLoader;
-import net.minecraft.commands.CommandSourceStack;
-import net.minecraft.commands.Commands;
-import net.minecraft.commands.arguments.EntityArgument;
-import net.minecraft.network.chat.Component;
-import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.command.argument.EntityArgumentType;
+import net.minecraft.server.command.CommandManager;
+import net.minecraft.server.command.ServerCommandSource;
+import net.minecraft.server.network.ServerPlayerEntity;
+import net.minecraft.text.TranslatableText;
 
 import java.nio.file.Path;
+import java.util.Locale;
 
-/**
- * Registers and handles all {@code /pickuprange} sub-commands.
- *
- * <p>Command tree:
- * <pre>
- *   /pickuprange get [player]                 — query range
- *   /pickuprange set &lt;range&gt;                  — set own item range
- *   /pickuprange set &lt;player&gt; &lt;range&gt;         — set another player's item range (op)
- *   /pickuprange setxp &lt;range&gt;               — set own XP range
- *   /pickuprange setxp &lt;player&gt; &lt;range&gt;      — set another player's XP range (op)
- *   /pickuprange reset [player]               — reset to server default
- *   /pickuprange reload                       — hot-reload config (op)
- * </pre>
- *
- * <p>All messages sent to players use {@link Component#translatable(String, Object...)} so
- * the client resolves them against its own {@code en_us.json}.
- */
 public final class PickupRangeCommand {
-
-    private PickupRangeCommand() {}
-
-    /**
-     * Registers the {@code /pickuprange} command tree with the given dispatcher.
-     *
-     * @param dispatcher Brigadier command dispatcher
-     */
-    public static void register(CommandDispatcher<CommandSourceStack> dispatcher) {
-        dispatcher.register(
-            Commands.literal("pickuprange")
-
-                // /pickuprange get [player]
-                .then(Commands.literal("get")
-                    .executes(ctx -> executeGet(ctx.getSource(), null))
-                    .then(Commands.argument("player", EntityArgument.player())
-                        .requires(Commands.hasPermission(Commands.LEVEL_ADMINS))
-                        .executes(ctx -> executeGet(ctx.getSource(),
-                                EntityArgument.getPlayer(ctx, "player")))))
-
-                // /pickuprange set <range>
-                .then(Commands.literal("set")
-                    .then(Commands.argument("range", DoubleArgumentType.doubleArg(0.0))
-                        .executes(ctx -> executeSetSelf(ctx.getSource(),
-                                DoubleArgumentType.getDouble(ctx, "range"))))
-                    // /pickuprange set <player> <range>  (op only)
-                    .then(Commands.argument("player", EntityArgument.player())
-                        .requires(Commands.hasPermission(Commands.LEVEL_ADMINS))
-                        .then(Commands.argument("range", DoubleArgumentType.doubleArg(0.0))
-                            .executes(ctx -> executeSetOther(ctx.getSource(),
-                                    EntityArgument.getPlayer(ctx, "player"),
-                                    DoubleArgumentType.getDouble(ctx, "range"))))))
-
-                // /pickuprange setxp <range>
-                .then(Commands.literal("setxp")
-                    .then(Commands.argument("range", DoubleArgumentType.doubleArg(0.0))
-                        .executes(ctx -> executeSetXpSelf(ctx.getSource(),
-                                DoubleArgumentType.getDouble(ctx, "range"))))
-                    // /pickuprange setxp <player> <range>  (op only)
-                    .then(Commands.argument("player", EntityArgument.player())
-                        .requires(Commands.hasPermission(Commands.LEVEL_ADMINS))
-                        .then(Commands.argument("range", DoubleArgumentType.doubleArg(0.0))
-                            .executes(ctx -> executeSetXpOther(ctx.getSource(),
-                                    EntityArgument.getPlayer(ctx, "player"),
-                                    DoubleArgumentType.getDouble(ctx, "range"))))))
-
-                // /pickuprange reset [player]
-                .then(Commands.literal("reset")
-                    .executes(ctx -> executeReset(ctx.getSource(), null))
-                    .then(Commands.argument("player", EntityArgument.player())
-                        .requires(Commands.hasPermission(Commands.LEVEL_ADMINS))
-                        .executes(ctx -> executeReset(ctx.getSource(),
-                                EntityArgument.getPlayer(ctx, "player")))))
-
-                // /pickuprange reload  (op level 2)
-                .then(Commands.literal("reload")
-                    .requires(Commands.hasPermission(Commands.LEVEL_ADMINS))
-                    .executes(ctx -> executeReload(ctx.getSource())))
-        );
+    private PickupRangeCommand() {
     }
 
-    // -------------------------------------------------------------------------
-    // Handlers
-    // -------------------------------------------------------------------------
+    public static void register(CommandDispatcher<ServerCommandSource> dispatcher) {
+        dispatcher.register(CommandManager.literal("pickuprange")
+                .then(CommandManager.literal("get")
+                        .executes(context -> executeGet(context.getSource(), null))
+                        .then(CommandManager.argument("player", EntityArgumentType.player())
+                                .requires(source -> source.hasPermissionLevel(2))
+                                .executes(context -> executeGet(context.getSource(),
+                                        EntityArgumentType.getPlayer(context, "player")))))
+                .then(CommandManager.literal("set")
+                        .then(CommandManager.argument("range", DoubleArgumentType.doubleArg(0.0))
+                                .executes(context -> executeSetSelf(context.getSource(),
+                                        DoubleArgumentType.getDouble(context, "range"))))
+                        .then(CommandManager.argument("player", EntityArgumentType.player())
+                                .requires(source -> source.hasPermissionLevel(2))
+                                .then(CommandManager.argument("range", DoubleArgumentType.doubleArg(0.0))
+                                        .executes(context -> executeSetOther(context.getSource(),
+                                                EntityArgumentType.getPlayer(context, "player"),
+                                                DoubleArgumentType.getDouble(context, "range"))))))
+                .then(CommandManager.literal("setxp")
+                        .then(CommandManager.argument("range", DoubleArgumentType.doubleArg(0.0))
+                                .executes(context -> executeSetXpSelf(context.getSource(),
+                                        DoubleArgumentType.getDouble(context, "range"))))
+                        .then(CommandManager.argument("player", EntityArgumentType.player())
+                                .requires(source -> source.hasPermissionLevel(2))
+                                .then(CommandManager.argument("range", DoubleArgumentType.doubleArg(0.0))
+                                        .executes(context -> executeSetXpOther(context.getSource(),
+                                                EntityArgumentType.getPlayer(context, "player"),
+                                                DoubleArgumentType.getDouble(context, "range"))))))
+                .then(CommandManager.literal("reset")
+                        .executes(context -> executeReset(context.getSource(), null))
+                        .then(CommandManager.argument("player", EntityArgumentType.player())
+                                .requires(source -> source.hasPermissionLevel(2))
+                                .executes(context -> executeReset(context.getSource(),
+                                        EntityArgumentType.getPlayer(context, "player")))))
+                .then(CommandManager.literal("reload")
+                        .requires(source -> source.hasPermissionLevel(2))
+                        .executes(context -> executeReload(context.getSource()))));
+    }
 
-    private static int executeGet(CommandSourceStack source, ServerPlayer target)
+    private static int executeGet(ServerCommandSource source, ServerPlayerEntity target)
             throws CommandSyntaxException {
+        ServerPlayerEntity player = target != null ? target : source.getPlayer();
+        double item = PlayerRangeManager.getEffectiveItemRange(player);
+        double xp = PlayerRangeManager.getEffectiveXpRange(player);
 
         if (target == null) {
-            ServerPlayer self = source.getPlayerOrException();
-            double item = PlayerRangeManager.getEffectiveItemRange(self);
-            double xp   = PlayerRangeManager.getEffectiveXpRange(self);
-            source.sendSuccess(() ->
-                Component.translatable("pickuprange.command.get.self",
-                    format1(item), format1(xp)), false);
+            source.sendFeedback(new TranslatableText("pickuprange.command.get.self",
+                    format(item), format(xp)), false);
         } else {
-            double item = PlayerRangeManager.getEffectiveItemRange(target);
-            double xp   = PlayerRangeManager.getEffectiveXpRange(target);
-            String name = target.getName().getString();
-            source.sendSuccess(() ->
-                Component.translatable("pickuprange.command.get.other",
-                    name, format1(item), format1(xp)), false);
+            source.sendFeedback(new TranslatableText("pickuprange.command.get.other",
+                    target.getName().getString(), format(item), format(xp)), false);
         }
         return 1;
     }
 
-    private static int executeSetSelf(CommandSourceStack source, double range)
+    private static int executeSetSelf(ServerCommandSource source, double range)
             throws CommandSyntaxException {
-
-        ServerConfig config = PickupRangeMod.getServerConfig();
-
-        if (!config.isAllowPlayerOverride()) {
-            source.sendFailure(Component.translatable("pickuprange.command.error.override"));
+        if (!canOverride(source)) {
             return 0;
         }
-        if (config.isRequirePermission() && !hasAdminPermission(source)) {
-            source.sendFailure(Component.translatable("pickuprange.command.error.permission"));
-            return 0;
-        }
-
-        double clamped = config.clamp(range);
-        ServerPlayer self = source.getPlayerOrException();
-        PlayerRangeManager.setItemRange(self.getUUID(), clamped);
-        pushRangeToClient(self);
-
-        double displayValue = clamped;
-        source.sendSuccess(() ->
-            Component.translatable("pickuprange.command.set.self", format1(displayValue)), true);
+        ServerPlayerEntity player = source.getPlayer();
+        double value = PickupRangeMod.getServerConfig().clamp(range);
+        PlayerRangeManager.setItemRange(player.getUuid(), value);
+        pushRangeToClient(player);
+        source.sendFeedback(new TranslatableText("pickuprange.command.set.self",
+                format(value)), true);
         return 1;
     }
 
-    private static int executeSetOther(CommandSourceStack source, ServerPlayer target, double range) {
-        double clamped = PickupRangeMod.getServerConfig().clamp(range);
-        PlayerRangeManager.setItemRange(target.getUUID(), clamped);
+    private static int executeSetOther(ServerCommandSource source,
+                                       ServerPlayerEntity target, double range) {
+        double value = PickupRangeMod.getServerConfig().clamp(range);
+        PlayerRangeManager.setItemRange(target.getUuid(), value);
         pushRangeToClient(target);
-
-        String name = target.getName().getString();
-        source.sendSuccess(() ->
-            Component.translatable("pickuprange.command.set.other",
-                name, format1(clamped)), true);
+        source.sendFeedback(new TranslatableText("pickuprange.command.set.other",
+                target.getName().getString(), format(value)), true);
         return 1;
     }
 
-    private static int executeSetXpSelf(CommandSourceStack source, double range)
+    private static int executeSetXpSelf(ServerCommandSource source, double range)
             throws CommandSyntaxException {
-
-        ServerConfig config = PickupRangeMod.getServerConfig();
-
-        if (!config.isAllowPlayerOverride()) {
-            source.sendFailure(Component.translatable("pickuprange.command.error.override"));
+        if (!canOverride(source)) {
             return 0;
         }
-        if (config.isRequirePermission() && !hasAdminPermission(source)) {
-            source.sendFailure(Component.translatable("pickuprange.command.error.permission"));
-            return 0;
-        }
-
-        double clamped = config.clamp(range);
-        ServerPlayer self = source.getPlayerOrException();
-        PlayerRangeManager.setXpRange(self.getUUID(), clamped);
-        pushRangeToClient(self);
-
-        source.sendSuccess(() ->
-            Component.translatable("pickuprange.command.set.xp.self", format1(clamped)), true);
+        ServerPlayerEntity player = source.getPlayer();
+        double value = PickupRangeMod.getServerConfig().clamp(range);
+        PlayerRangeManager.setXpRange(player.getUuid(), value);
+        pushRangeToClient(player);
+        source.sendFeedback(new TranslatableText("pickuprange.command.set.xp.self",
+                format(value)), true);
         return 1;
     }
 
-    private static int executeSetXpOther(CommandSourceStack source, ServerPlayer target, double range) {
-        double clamped = PickupRangeMod.getServerConfig().clamp(range);
-        PlayerRangeManager.setXpRange(target.getUUID(), clamped);
+    private static int executeSetXpOther(ServerCommandSource source,
+                                         ServerPlayerEntity target, double range) {
+        double value = PickupRangeMod.getServerConfig().clamp(range);
+        PlayerRangeManager.setXpRange(target.getUuid(), value);
         pushRangeToClient(target);
-
-        String name = target.getName().getString();
-        source.sendSuccess(() ->
-            Component.translatable("pickuprange.command.set.xp.other",
-                name, format1(clamped)), true);
+        source.sendFeedback(new TranslatableText("pickuprange.command.set.xp.other",
+                target.getName().getString(), format(value)), true);
         return 1;
     }
 
-    private static int executeReset(CommandSourceStack source, ServerPlayer target)
+    private static int executeReset(ServerCommandSource source, ServerPlayerEntity target)
             throws CommandSyntaxException {
+        if (target == null && !canOverride(source)) {
+            return 0;
+        }
 
-        ServerConfig config = PickupRangeMod.getServerConfig();
+        ServerPlayerEntity player = target != null ? target : source.getPlayer();
+        PlayerRangeManager.resetRange(player.getUuid());
+        pushRangeToClient(player);
 
         if (target == null) {
-            if (!config.isAllowPlayerOverride()) {
-                source.sendFailure(Component.translatable("pickuprange.command.error.override"));
-                return 0;
-            }
-            if (config.isRequirePermission() && !hasAdminPermission(source)) {
-                source.sendFailure(Component.translatable("pickuprange.command.error.permission"));
-                return 0;
-            }
-
-            ServerPlayer self = source.getPlayerOrException();
-            PlayerRangeManager.resetRange(self.getUUID());
-            pushRangeToClient(self);
-
-            double di = config.getDefaultItemRange();
-            double dx = config.getDefaultXpRange();
-            source.sendSuccess(() ->
-                Component.translatable("pickuprange.command.reset.self",
-                    format1(di), format1(dx)), true);
+            source.sendFeedback(new TranslatableText("pickuprange.command.reset.self",
+                    format(PlayerRangeManager.getEffectiveItemRange(player)),
+                    format(PlayerRangeManager.getEffectiveXpRange(player))), true);
         } else {
-            PlayerRangeManager.resetRange(target.getUUID());
-            pushRangeToClient(target);
-            String name = target.getName().getString();
-            source.sendSuccess(() ->
-                Component.translatable("pickuprange.command.reset.other", name), true);
+            source.sendFeedback(new TranslatableText("pickuprange.command.reset.other",
+                    target.getName().getString()), true);
         }
         return 1;
     }
 
-    private static int executeReload(CommandSourceStack source) {
-        Path configPath = FabricLoader.getInstance()
-                .getConfigDir().resolve("pickup-range-server.json");
-
-        ServerConfig newConfig = ServerConfig.load(configPath);
-        PickupRangeMod.setServerConfig(newConfig);
-        ModPackets.broadcastConfigReload(source.getServer(), newConfig);
-
-        source.sendSuccess(() -> Component.translatable("pickuprange.command.reload"), true);
-        PickupRangeMod.LOGGER.info("Config reloaded by {}.", source.getTextName());
+    private static int executeReload(ServerCommandSource source) {
+        Path path = FabricLoader.getInstance().getConfigDir()
+                .resolve("pickup-range-server.json");
+        ServerConfig config = ServerConfig.load(path);
+        PickupRangeMod.setServerConfig(config);
+        ModPackets.broadcastConfigReload(source.getMinecraftServer(), config);
+        source.sendFeedback(new TranslatableText("pickuprange.command.reload"), true);
         return 1;
     }
 
-    // -------------------------------------------------------------------------
-    // Helpers
-    // -------------------------------------------------------------------------
+    private static boolean canOverride(ServerCommandSource source) {
+        ServerConfig config = PickupRangeMod.getServerConfig();
+        if (!config.isAllowPlayerOverride()) {
+            source.sendError(new TranslatableText("pickuprange.command.error.override"));
+            return false;
+        }
+        if (config.isRequirePermission() && !source.hasPermissionLevel(2)) {
+            source.sendError(new TranslatableText("pickuprange.command.error.permission"));
+            return false;
+        }
+        return true;
+    }
 
-    /** Pushes the current effective range to the player's client if they have the mod. */
-    private static void pushRangeToClient(ServerPlayer player) {
-        if (net.fabricmc.fabric.api.networking.v1.ServerPlayNetworking
-                .canSend(player, ModPackets.SYNC_PLAYER_RANGE_TYPE)) {
+    private static void pushRangeToClient(ServerPlayerEntity player) {
+        if (ServerPlayNetworking.canSend(player, ModPackets.SYNC_PLAYER_RANGE)) {
             ModPackets.sendSyncPlayerRange(player,
                     PlayerRangeManager.getEffectiveItemRange(player),
                     PlayerRangeManager.getEffectiveXpRange(player));
         }
     }
 
-    private static boolean hasAdminPermission(CommandSourceStack source) {
-        return Commands.LEVEL_ADMINS.check(source.permissions());
-    }
-
-    /**
-     * Formats a double to one decimal place as a {@link String} for use in
-     * {@link Component#translatable(String, Object...)} arguments.
-     *
-     * @param value the value to format
-     * @return formatted string, e.g. {@code "5.0"}
-     */
-    private static String format1(double value) {
-        return String.format("%.1f", value);
+    private static String format(double value) {
+        return String.format(Locale.ROOT, "%.1f", value);
     }
 }

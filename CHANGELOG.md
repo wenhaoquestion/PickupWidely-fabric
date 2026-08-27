@@ -9,7 +9,7 @@ All notable changes to Pickup Range are documented here.
 Complete rewrite of the mod.
 
 ### Added
-- **Mojang official mappings** — replaced Yarn mappings for forward compatibility with future unobfuscated Minecraft versions
+- **Minecraft 1.16.5 port** — built against Yarn `1.16.5+build.10` and the legacy Fabric networking APIs
 - **Per-player pickup ranges** — stored in `<world>/data/pickuprange_players.json`, persisted across restarts
 - **XP orb range** — separate configurable attraction radius for experience orbs
 - **Commands** — `/pickuprange set/get/reset/setxp/reload` with proper permission checks
@@ -24,10 +24,10 @@ Complete rewrite of the mod.
 ### Changed
 - Mod ID changed from the legacy `pickupwidely` / `item-pickup-range` IDs to `pickuprange`
 - Package changed from `me.hadroncollision.pickupwidely` to `com.example.pickuprange`
-- Logger migrated from `java.util.logging.Logger` to `org.slf4j.Logger` (Fabric standard)
+- Logger migrated from `java.util.logging.Logger` to Log4j
 - Pickup radius type changed from `byte` (max 127) to `double` (default bounds 0.5–64.0)
 - Config format changed from `.properties` to JSON
-- Minimum Java version raised from 17 to 21 (required for Minecraft 1.21+)
+- Java 8 target (required for Minecraft 1.16.5)
 
 ### Fixed
 - Original mixin only searched for one nearby player — now handles multiple players
