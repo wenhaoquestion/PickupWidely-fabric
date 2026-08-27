@@ -114,7 +114,7 @@ All commands are under `/pickuprange`.
 
 | Mod Version | Minecraft |
 |-------------|-----------|
-| 2.x (this branch) | 1.20.6 |
+| 2.0.0+1.20.6 | 1.20.6 |
 | 0.0.1 | 1.20.4 |
 
 ---

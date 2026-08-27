@@ -4,7 +4,7 @@ All notable changes to Pickup Range are documented here.
 
 ---
 
-## [2.0.0] — 2026-08-26
+## [2.0.0+1.20.6] — 2026-08-26
 
 Complete rewrite of the mod, backported with full feature parity to Minecraft 1.20.6.
 
