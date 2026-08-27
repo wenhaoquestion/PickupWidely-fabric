@@ -4,6 +4,17 @@ All notable changes to Pickup Range are documented here.
 
 ---
 
+## [2.0.1+1.20.6] — 2026-08-26
+
+Maintenance release for Minecraft 1.20.6.
+
+### Fixed
+- Require the intended operator level for privileged commands.
+- Exclude spectators and dead or dying players from extended item pickup.
+- Preserve vanilla XP-orb target selection and movement timing while applying custom ranges.
+
+---
+
 ## [2.0.0+1.20.6] — 2026-08-26
 
 Complete rewrite of the mod, backported with full feature parity to Minecraft 1.20.6.
