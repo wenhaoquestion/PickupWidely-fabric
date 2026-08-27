@@ -115,8 +115,8 @@ All commands are under `/pickuprange`.
 Pickup Range 2.0 is maintained as one self-contained branch per Minecraft release.
 The `master` branch tracks the newest supported release.
 
-| Mod Version | Minecraft | Git branch | Java |
-|-------------|-----------|------------|------|
+| Mod Version | Minecraft | Git branch | Game / runtime Java |
+|-------------|-----------|------------|---------------------|
 | 2.0.x | 1.21.11 | [`master`](../../tree/master) / [`mc/1.21.11`](../../tree/mc/1.21.11) | 21 |
 | 2.0.x | 1.20.6 | [`mc/1.20.6`](../../tree/mc/1.20.6) | 21 |
 | 2.0.x | 1.19.4 | [`mc/1.19.4`](../../tree/mc/1.19.4) | 17 |
@@ -126,7 +126,8 @@ The `master` branch tracks the newest supported release.
 
 Each branch has its own exact Fabric, Gradle, mappings, and Java settings. A JAR
 built from one branch must not be relabelled as compatible with another Minecraft
-version.
+version. The Java values above are the versions used to run Minecraft; see each
+branch's README for its source-build JDK requirements.
 
 ---
 
