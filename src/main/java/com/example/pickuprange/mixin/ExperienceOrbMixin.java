@@ -31,8 +31,9 @@ public abstract class ExperienceOrbMixin {
     @Shadow private Player followingPlayer;
 
     /**
-     * Selects the nearest player whose own effective range contains this orb, then applies
-     * vanilla's attraction curve using that range as the radius.
+     * Retains vanilla's cached target while that player's effective range still contains
+     * this orb. When a new target is needed, selects the nearest eligible player using
+     * vanilla's entity-to-entity distance, then applies the vanilla attraction curve.
      */
     @Inject(at = @At("HEAD"), method = "followNearbyPlayer", cancellable = true)
     private void onFollowNearbyPlayer(CallbackInfo ci) {
@@ -42,45 +43,64 @@ public abstract class ExperienceOrbMixin {
         if (self.level().isClientSide()) return;
 
         ServerConfig config = PickupRangeMod.getServerConfig();
-        Player nearest = null;
-        double nearestDistanceSq = Double.POSITIVE_INFINITY;
-        double nearestEffectiveRange = 0.0;
+        Player target = this.followingPlayer;
+        double targetEffectiveRange = 0.0;
 
-        // getNearestPlayer cannot express a different maximum distance per player. The
-        // server player list is normally small and avoids a large entity-volume query.
-        for (Player player : self.level().players()) {
-            if (player.isSpectator() || player.isDeadOrDying()) continue;
-
-            double rawRange = PlayerRangeManager.getEffectiveXpRange(player);
-            if (!Double.isFinite(rawRange)) continue;
-            double effectiveRange = config.clamp(rawRange);
-
-            Vec3 delta = player.position()
-                    .add(0.0, player.getBbHeight() * 0.5, 0.0)
-                    .subtract(self.position());
-            double distanceSq = delta.lengthSqr();
-            if (distanceSq > effectiveRange * effectiveRange) continue;
-
-            if (distanceSq < nearestDistanceSq) {
-                nearest = player;
-                nearestDistanceSq = distanceSq;
-                nearestEffectiveRange = effectiveRange;
+        if (target != null) {
+            targetEffectiveRange = config.clamp(
+                    PlayerRangeManager.getEffectiveXpRange(target));
+            if (!isEligibleTarget(target, self, targetEffectiveRange)) {
+                target = null;
             }
         }
 
-        this.followingPlayer = nearest;
+        if (target == null) {
+            double nearestDistanceSq = Double.POSITIVE_INFINITY;
 
-        if (nearest != null) {
-            // This is vanilla's force formula with 8.0 replaced by the effective range.
-            Vec3 delta = nearest.position()
-                    .add(0.0, nearest.getBbHeight() * 0.5, 0.0)
-                    .subtract(self.position());
-            double strength = 1.0 - Math.sqrt(delta.lengthSqr()) / nearestEffectiveRange;
+            // getNearestPlayer cannot express a different maximum distance per player. The
+            // server player list is normally small and avoids a large entity-volume query.
+            for (Player player : self.level().players()) {
+                double rawRange = PlayerRangeManager.getEffectiveXpRange(player);
+                if (!Double.isFinite(rawRange)) continue;
+                double effectiveRange = config.clamp(rawRange);
+                if (!isEligibleTarget(player, self, effectiveRange)) continue;
+
+                double distanceSq = player.distanceToSqr(self);
+                if (distanceSq < nearestDistanceSq) {
+                    target = player;
+                    nearestDistanceSq = distanceSq;
+                    targetEffectiveRange = effectiveRange;
+                }
+            }
+        }
+
+        this.followingPlayer = target;
+
+        if (target != null) {
+            // Exact vanilla force point: half the player's eye height above their base Y.
+            Vec3 delta = new Vec3(
+                    target.getX() - self.getX(),
+                    target.getY() + target.getEyeHeight() * 0.5 - self.getY(),
+                    target.getZ() - self.getZ());
+            double strength = Math.max(0.0,
+                    1.0 - Math.sqrt(delta.lengthSqr()) / targetEffectiveRange);
 
             self.setDeltaMovement(self.getDeltaMovement().add(
                     delta.normalize().scale(strength * strength * 0.1)));
         }
 
         ci.cancel();
+    }
+
+    /** Returns whether vanilla may keep or newly select this player as the target. */
+    private static boolean isEligibleTarget(Player player, ExperienceOrb orb,
+                                            double effectiveRange) {
+        if (player.isRemoved() || player.isSpectator() || player.isDeadOrDying()) {
+            return false;
+        }
+        if (!Double.isFinite(effectiveRange) || effectiveRange <= 0.0) {
+            return false;
+        }
+        return player.distanceToSqr(orb) <= effectiveRange * effectiveRange;
     }
 }
