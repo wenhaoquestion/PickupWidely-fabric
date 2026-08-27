@@ -1,16 +1,17 @@
 package com.example.pickuprange.client;
 
 import com.example.pickuprange.PickupRangeClientMod;
+import com.mojang.blaze3d.vertex.PoseStack;
 import net.fabricmc.api.EnvType;
 import net.fabricmc.api.Environment;
 import net.minecraft.client.Minecraft;
-import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.components.AbstractSliderButton;
 import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.gui.components.EditBox;
 import net.minecraft.client.gui.screens.Screen;
-import net.minecraft.client.input.KeyEvent;
 import net.minecraft.network.chat.Component;
+import net.minecraft.network.chat.TextComponent;
+import net.minecraft.network.chat.TranslatableComponent;
 import org.lwjgl.glfw.GLFW;
 
 import java.util.Locale;
@@ -55,7 +56,7 @@ public class PickupRangeScreen extends Screen {
     private boolean wasXpInputFocused;
 
     public PickupRangeScreen() {
-        super(Component.translatable("pickuprange.screen.title"));
+        super(new TranslatableComponent("pickuprange.screen.title"));
         this.pendingItemRange = PickupRangeClientMod.getClientItemRange();
         this.pendingXpRange   = PickupRangeClientMod.getClientXpRange();
     }
@@ -78,40 +79,40 @@ public class PickupRangeScreen extends Screen {
         // --- Item range slider ---
         itemSlider = addRenderableWidget(new RangeSlider(
                 sliderX, itemSliderY, SLIDER_W, SLIDER_H,
-                Component.translatable("pickuprange.screen.item_range"),
+                new TranslatableComponent("pickuprange.screen.item_range"),
                 pendingItemRange, min, max,
                 this::onItemSliderChanged
         ));
         itemInput = addRenderableWidget(createRangeInput(
                 inputX, itemInputY,
-                Component.translatable("pickuprange.screen.item_range"),
+                new TranslatableComponent("pickuprange.screen.item_range"),
                 itemSlider, pendingItemRange
         ));
 
         // --- XP range slider ---
         xpSlider = addRenderableWidget(new RangeSlider(
                 sliderX, xpSliderY, SLIDER_W, SLIDER_H,
-                Component.translatable("pickuprange.screen.xp_range"),
+                new TranslatableComponent("pickuprange.screen.xp_range"),
                 pendingXpRange, min, max,
                 this::onXpSliderChanged
         ));
         xpInput = addRenderableWidget(createRangeInput(
                 inputX, xpInputY,
-                Component.translatable("pickuprange.screen.xp_range"),
+                new TranslatableComponent("pickuprange.screen.xp_range"),
                 xpSlider, pendingXpRange
         ));
 
         // --- Apply button ---
-        addRenderableWidget(Button.builder(
-                Component.translatable("pickuprange.screen.apply"),
-                btn -> applyAndClose()
-        ).bounds(cx - BTN_W - 4, buttonY, BTN_W, SLIDER_H).build());
+        addRenderableWidget(new Button(
+                cx - BTN_W - 4, buttonY, BTN_W, SLIDER_H,
+                new TranslatableComponent("pickuprange.screen.apply"),
+                btn -> applyAndClose()));
 
         // --- Cancel button ---
-        addRenderableWidget(Button.builder(
-                Component.translatable("gui.cancel"),
-                btn -> onClose()
-        ).bounds(cx + 4, buttonY, BTN_W, SLIDER_H).build());
+        addRenderableWidget(new Button(
+                cx + 4, buttonY, BTN_W, SLIDER_H,
+                new TranslatableComponent("gui.cancel"),
+                btn -> onClose()));
 
         setInitialFocus(itemInput);
         wasItemInputFocused = itemInput.isFocused();
@@ -119,14 +120,14 @@ public class PickupRangeScreen extends Screen {
     }
 
     @Override
-    public void render(GuiGraphics graphics, int mouseX, int mouseY, float delta) {
-        super.render(graphics, mouseX, mouseY, delta);
+    public void render(PoseStack poseStack, int mouseX, int mouseY, float delta) {
+        super.render(poseStack, mouseX, mouseY, delta);
 
         int cx = width  / 2;
         int cy = height / 2;
 
         // Title
-        graphics.drawCenteredString(font, title, cx, cy - 84, 0xFFFFFF);
+        drawCenteredString(poseStack, font, title, cx, cy - 84, 0xFFFFFF);
     }
 
     @Override
@@ -145,8 +146,8 @@ public class PickupRangeScreen extends Screen {
     }
 
     @Override
-    public boolean keyPressed(KeyEvent keyEvent) {
-        if (keyEvent.key() == GLFW.GLFW_KEY_ENTER || keyEvent.key() == GLFW.GLFW_KEY_KP_ENTER) {
+    public boolean keyPressed(int keyCode, int scanCode, int modifiers) {
+        if (keyCode == GLFW.GLFW_KEY_ENTER || keyCode == GLFW.GLFW_KEY_KP_ENTER) {
             if (itemInput != null && itemInput.isFocused()) {
                 commitRangeInput(itemInput, itemSlider);
                 return true;
@@ -156,7 +157,7 @@ public class PickupRangeScreen extends Screen {
                 return true;
             }
         }
-        return super.keyPressed(keyEvent);
+        return super.keyPressed(keyCode, scanCode, modifiers);
     }
 
     /** Sends the pending values as commands and closes the screen. */
@@ -164,10 +165,10 @@ public class PickupRangeScreen extends Screen {
         commitRangeInput(itemInput, itemSlider);
         commitRangeInput(xpInput, xpSlider);
 
-        var connection = Minecraft.getInstance().getConnection();
-        if (connection != null) {
-            connection.sendCommand("pickuprange set " + formatRange(pendingItemRange));
-            connection.sendCommand("pickuprange setxp " + formatRange(pendingXpRange));
+        var player = Minecraft.getInstance().player;
+        if (player != null) {
+            player.chat("/pickuprange set " + formatRange(pendingItemRange));
+            player.chat("/pickuprange setxp " + formatRange(pendingXpRange));
         }
         onClose();
     }
@@ -181,7 +182,7 @@ public class PickupRangeScreen extends Screen {
     private EditBox createRangeInput(int x, int y, Component label, RangeSlider slider, double initialValue) {
         EditBox input = new EditBox(font, x, y, INPUT_W, SLIDER_H, label);
         input.setMaxLength(8);
-        input.setHint(Component.literal(formatRange(slider.getMin()) + " - " + formatRange(slider.getMax())));
+        input.setSuggestion(formatRange(slider.getMin()) + " - " + formatRange(slider.getMax()));
         input.setFilter(text -> RANGE_INPUT.matcher(text).matches());
         input.setValue(formatRange(initialValue));
         input.setResponder(text -> onRangeInputChanged(input, slider, text));
@@ -283,7 +284,7 @@ public class PickupRangeScreen extends Screen {
                     Component label,
                     double initial, double min, double max,
                     Consumer<Double> onChange) {
-            super(x, y, width, height, Component.empty(), 0.0);
+            super(x, y, width, height, TextComponent.EMPTY, 0.0);
             this.label    = label;
             this.min      = min;
             this.max      = max;
@@ -309,17 +310,26 @@ public class PickupRangeScreen extends Screen {
 
         private void setActualValue(double actualValue) {
             if (max <= min) {
-                setValue(0.0);
+                setNormalizedValue(0.0);
                 return;
             }
 
             double clamped = clamp(normalizeRange(actualValue), min, max);
-            setValue((clamped - min) / (max - min));
+            setNormalizedValue((clamped - min) / (max - min));
+        }
+
+        private void setNormalizedValue(double normalizedValue) {
+            double clamped = clamp(normalizedValue, 0.0, 1.0);
+            if (Double.compare(value, clamped) != 0) {
+                value = clamped;
+                applyValue();
+            }
+            updateMessage();
         }
 
         @Override
         protected void updateMessage() {
-            setMessage(Component.literal(label.getString() + ": " + formatRange(getActualValue())));
+            setMessage(new TextComponent(label.getString() + ": " + formatRange(getActualValue())));
         }
 
         @Override

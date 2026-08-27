@@ -6,7 +6,7 @@ import com.example.pickuprange.data.PlayerRangeManager;
 import com.example.pickuprange.network.ModPackets;
 import net.fabricmc.api.ModInitializer;
 import net.fabricmc.loader.api.FabricLoader;
-import net.fabricmc.fabric.api.command.v2.CommandRegistrationCallback;
+import net.fabricmc.fabric.api.command.v1.CommandRegistrationCallback;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerLifecycleEvents;
 import net.fabricmc.fabric.api.networking.v1.ServerPlayConnectionEvents;
 import net.fabricmc.fabric.api.networking.v1.ServerPlayNetworking;
@@ -45,7 +45,7 @@ public class PickupRangeMod implements ModInitializer {
         ModPackets.registerServerReceivers();
 
         // 3. Register commands.
-        CommandRegistrationCallback.EVENT.register((dispatcher, registryAccess, environment) ->
+        CommandRegistrationCallback.EVENT.register((dispatcher, dedicated) ->
                 PickupRangeCommand.register(dispatcher));
 
         // 4. Server lifecycle: load config and player data on start, persist on stop.
