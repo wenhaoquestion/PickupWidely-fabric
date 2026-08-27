@@ -1,0 +1,19 @@
+{
+  "pickuprange.command.get.self":         "Your pickup range — items: %s blocks, xp: %s blocks",
+  "pickuprange.command.get.other":        "%s's pickup range — items: %s blocks, xp: %s blocks",
+  "pickuprange.command.set.self":         "Your item pickup range set to %s blocks",
+  "pickuprange.command.set.other":        "%s's item pickup range set to %s blocks",
+  "pickuprange.command.set.xp.self":      "Your XP pickup range set to %s blocks",
+  "pickuprange.command.set.xp.other":     "%s's XP pickup range set to %s blocks",
+  "pickuprange.command.reset.self":       "Your pickup range reset to default (items: %s, xp: %s)",
+  "pickuprange.command.reset.other":      "%s's pickup range reset to default",
+  "pickuprange.command.reload":           "Pickup Range config reloaded.",
+  "pickuprange.command.error.override":   "Player overrides are disabled on this server.",
+  "pickuprange.command.error.permission": "You do not have permission to change your pickup range.",
+  "pickuprange.screen.title":             "Pickup Range Settings",
+  "pickuprange.screen.item_range":        "Item Pickup Range",
+  "pickuprange.screen.xp_range":          "XP Pickup Range",
+  "pickuprange.screen.apply":             "Apply",
+  "key.pickuprange.open_screen":          "Open Range Settings",
+  "key.category.pickuprange":             "Pickup Range"
+}

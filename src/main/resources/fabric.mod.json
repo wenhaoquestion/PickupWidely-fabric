@@ -1,34 +1,38 @@
 {
   "schemaVersion": 1,
-  "id": "pickupwidely",
+  "id": "pickuprange",
   "version": "${version}",
 
-  "name": "PickupWidely",
-  "description": "This mod increases the radius in which the player can pickup items.",
+  "name": "Pickup Range",
+  "description": "Configurable item and XP orb pickup range with per-player settings, commands, and client visual indicators.",
   "authors": [
     "HadronCollision"
   ],
   "contact": {
-    "discord": "https://discord.com/users/930191705360195665"
+    "discord": "https://discord.com/users/930191705360195665",
+    "sources": "https://github.com/wenhaoquestion/PickupWidely-fabric"
   },
 
-  "license": "GNU GPL-3.0",
-  "icon": "assets/pickupwidely/pickup-widely.png",
+  "license": "MIT",
+  "icon": "assets/pickuprange/icon.png",
 
   "environment": "*",
   "entrypoints": {
     "main": [
-      "me.hadroncollision.pickupwidely.PickupWidely"
+      "com.example.pickuprange.PickupRangeMod"
+    ],
+    "client": [
+      "com.example.pickuprange.PickupRangeClientMod"
     ]
   },
   "mixins": [
-    "pickupwidely.mixins.json"
+    "pickuprange.mixins.json"
   ],
 
   "depends": {
-    "fabricloader": ">=0.15.7",
-    "fabric": "*",
-    "minecraft": "1.20.4",
-    "java": ">=17"
+    "fabricloader": ">=0.15.0",
+    "fabric-api": "*",
+    "minecraft": ">=1.21.11",
+    "java": ">=21"
   }
 }
