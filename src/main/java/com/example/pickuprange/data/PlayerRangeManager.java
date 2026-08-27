@@ -7,8 +7,8 @@ import com.google.gson.GsonBuilder;
 import com.google.gson.JsonSyntaxException;
 import com.google.gson.reflect.TypeToken;
 import net.minecraft.server.MinecraftServer;
-import net.minecraft.world.entity.player.Player;
-import net.minecraft.world.level.storage.LevelResource;
+import net.minecraft.entity.player.PlayerEntity;
+import net.minecraft.util.WorldSavePath;
 
 import java.io.IOException;
 import java.io.Reader;
@@ -52,7 +52,7 @@ public final class PlayerRangeManager {
      */
     public static void load(MinecraftServer server) {
         // VERSION-SENSITIVE: getWorldPath(LevelResource.ROOT) resolves to the world root.
-        savedDataPath = server.getWorldPath(LevelResource.ROOT).resolve("data").resolve(DATA_FILE);
+        savedDataPath = server.getSavePath(WorldSavePath.ROOT).resolve("data").resolve(DATA_FILE);
         RANGES.clear();
 
         if (!Files.exists(savedDataPath)) {
@@ -123,8 +123,8 @@ public final class PlayerRangeManager {
      * @param player the player to query
      * @return effective item range in blocks
      */
-    public static double getEffectiveItemRange(Player player) {
-        return getEffectiveItemRange(player.getUUID());
+    public static double getEffectiveItemRange(PlayerEntity player) {
+        return getEffectiveItemRange(player.getUuid());
     }
 
     /**
@@ -148,8 +148,8 @@ public final class PlayerRangeManager {
      * @param player the player to query
      * @return effective XP range in blocks
      */
-    public static double getEffectiveXpRange(Player player) {
-        return getEffectiveXpRange(player.getUUID());
+    public static double getEffectiveXpRange(PlayerEntity player) {
+        return getEffectiveXpRange(player.getUuid());
     }
 
     /**
