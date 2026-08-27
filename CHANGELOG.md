@@ -4,7 +4,7 @@ All notable changes to Pickup Range are documented here.
 
 ---
 
-## [2.0.0] — 2026-04-06
+## [2.0.0] — 2026-08-26
 
 Complete rewrite of the mod.
 
@@ -14,19 +14,18 @@ Complete rewrite of the mod.
 - **XP orb range** — separate configurable attraction radius for experience orbs
 - **Commands** — `/pickuprange set/get/reset/setxp/reload` with proper permission checks
 - **Networking handshake** — server detects mod presence on client and syncs config on join
-- **Magnet animation** — optional smooth item attraction toward player before pickup
-- **Particle ring indicator** — client-side visual showing current pickup radius (toggle with `R`)
+- **Settings screen** — client-side GUI for item and XP ranges, opened with the rebindable `R` key
 - **Hot-reload** — `/pickuprange reload` applies config changes without a server restart
 - **`PickupRangeCallback` event** — allows other mods to intercept or cancel extended pickups
-- **Dual config system** — separate server (`pickup-range-server.json`) and client (`pickup-range-client.json`) config files
+- **JSON server config** — server defaults, bounds, and override permissions in `pickup-range-server.json`
 - **`ExperienceOrbMixin`** — extends XP orb attraction range beyond vanilla 8 blocks
 - **`PlayerRangeManager`** — thread-safe in-memory store with JSON persistence
 
 ### Changed
-- Mod ID changed from `pickupwidely` to `pickuprange`
+- Mod ID changed from the legacy `pickupwidely` / `item-pickup-range` IDs to `pickuprange`
 - Package changed from `me.hadroncollision.pickupwidely` to `com.example.pickuprange`
 - Logger migrated from `java.util.logging.Logger` to `org.slf4j.Logger` (Fabric standard)
-- Pickup radius type changed from `byte` (max 127) to `double` (0.5–64.0)
+- Pickup radius type changed from `byte` (max 127) to `double` (default bounds 0.5–64.0)
 - Config format changed from `.properties` to JSON
 - Minimum Java version raised from 17 to 21 (required for Minecraft 1.21+)
 

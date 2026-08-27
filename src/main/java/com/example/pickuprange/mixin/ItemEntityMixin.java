@@ -1,9 +1,11 @@
 package com.example.pickuprange.mixin;
 
 import com.example.pickuprange.PickupRangeMod;
+import com.example.pickuprange.config.ServerConfig;
 import com.example.pickuprange.data.PlayerRangeManager;
 import com.example.pickuprange.event.PickupRangeCallback;
 import net.minecraft.world.InteractionResult;
+import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.item.ItemEntity;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.phys.AABB;
@@ -13,8 +15,6 @@ import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
-import java.util.List;
-
 /**
  * Mixin into {@link ItemEntity} to implement extended item pickup range.
  *
@@ -23,9 +23,9 @@ import java.util.List;
  * {@link #playerTouch(Player)} is called directly — identical to what vanilla does when a
  * player walks over an item. No custom animation; behaviour is vanilla-identical.
  *
- * <p><strong>Vanilla range note:</strong> Vanilla inflates the pickup AABB by (1.0, 0.0, 1.0),
- * giving roughly a 1.25-block horizontal reach. Players within {@link #VANILLA_RANGE_SQ} are
- * skipped here because vanilla's own tick has already handled them.
+ * <p><strong>Vanilla range note:</strong> The player tick checks the player's AABB inflated by
+ * (1.0, 0.5, 1.0), or the union of the player and vehicle AABBs inflated horizontally while
+ * riding. This mixin uses that same intersection test to avoid duplicate handling.
  *
  * <p>VERSION-SENSITIVE (Mojang mappings):
  * <ul>
@@ -50,6 +50,25 @@ public abstract class ItemEntityMixin {
     @Shadow public abstract void playerTouch(Player player);
 
     /**
+     * Applies the configured range to vanilla collision pickups as well as this mixin's
+     * extended calls. Without this guard, values below vanilla's pickup AABB (for example
+     * the configured 0.5 minimum) would have no effect.
+     */
+    @Inject(at = @At("HEAD"), method = "playerTouch", cancellable = true)
+    private void enforceConfiguredPickupRange(Player player, CallbackInfo ci) {
+        ItemEntity self = (ItemEntity) (Object) this;
+        if (self.level().isClientSide()) return;
+
+        ServerConfig config = PickupRangeMod.getServerConfig();
+        double effectiveRange = config.clamp(
+                PlayerRangeManager.getEffectiveItemRange(player));
+        if (!Double.isFinite(effectiveRange)
+                || self.distanceToSqr(player) > effectiveRange * effectiveRange) {
+            ci.cancel();
+        }
+    }
+
+    /**
      * Extends the item pickup range beyond vanilla's default.
      *
      * <p>Runs after vanilla has already attempted pickup for nearby players.
@@ -65,25 +84,27 @@ public abstract class ItemEntityMixin {
         if (pickupDelay != 0) return;
 
         double maxRange = PickupRangeMod.getServerConfig().getMaxRange();
-        AABB searchBox = self.getBoundingBox().inflate(maxRange);
-        List<Player> nearbyPlayers = self.level().getEntitiesOfClass(Player.class, searchBox);
 
-        for (Player player : nearbyPlayers) {
+        // Player lists are much cheaper here than a maxRange-sized entity volume query for
+        // every item entity on every tick.
+        for (Player player : self.level().players()) {
             if (self.isRemoved()) break;
             if (player.isSpectator()) continue;
 
+            // Vanilla's player tick owns this exact overlap. A fixed-radius approximation
+            // incorrectly swallowed valid configured ranges such as 1.5 blocks.
+            if (isInsideVanillaPickupBox(player, self)) continue;
+
+            double effectiveRange = Math.min(
+                    PlayerRangeManager.getEffectiveItemRange(player), maxRange);
+            if (!Double.isFinite(effectiveRange) || effectiveRange <= 0.0) continue;
+            double rangeSq = effectiveRange * effectiveRange;
             double distSq = self.distanceToSqr(player);
-
-            // Skip players already within vanilla range — they were handled above.
-            if (distSq <= VANILLA_RANGE_SQ) continue;
-
-            double rangeSq = PlayerRangeManager.getEffectiveItemRange(player);
-            rangeSq *= rangeSq;
             if (distSq > rangeSq) continue;
 
             InteractionResult result =
                     PickupRangeCallback.ITEM_PICKUP.invoker().onPickup(player, self,
-                            Math.sqrt(rangeSq));
+                            effectiveRange);
             if (result == InteractionResult.FAIL) continue;
 
             playerTouch(player);
@@ -91,8 +112,21 @@ public abstract class ItemEntityMixin {
     }
 
     /**
-     * Squared distance below which vanilla's own pickup logic is sufficient.
-     * Vanilla inflates by (1.0, 0.0, 1.0); 1.75 gives a safe margin above that.
+     * Mirrors the AABB used by {@code Player#aiStep()} before it invokes
+     * {@link ItemEntity#playerTouch(Player)}.
      */
-    private static final double VANILLA_RANGE_SQ = 1.75 * 1.75;
+    private static boolean isInsideVanillaPickupBox(Player player, ItemEntity item) {
+        AABB playerPickupBox;
+        Entity vehicle = player.getVehicle();
+
+        if (player.isPassenger() && vehicle != null && !vehicle.isRemoved()) {
+            playerPickupBox = player.getBoundingBox()
+                    .minmax(vehicle.getBoundingBox())
+                    .inflate(1.0, 0.0, 1.0);
+        } else {
+            playerPickupBox = player.getBoundingBox().inflate(1.0, 0.5, 1.0);
+        }
+
+        return playerPickupBox.intersects(item.getBoundingBox());
+    }
 }

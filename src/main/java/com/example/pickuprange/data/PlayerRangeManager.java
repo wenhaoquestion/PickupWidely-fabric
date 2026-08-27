@@ -1,6 +1,7 @@
 package com.example.pickuprange.data;
 
 import com.example.pickuprange.PickupRangeMod;
+import com.example.pickuprange.config.ServerConfig;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import com.google.gson.JsonSyntaxException;
@@ -133,11 +134,12 @@ public final class PlayerRangeManager {
      * @return effective item range in blocks
      */
     public static double getEffectiveItemRange(UUID uuid) {
+        ServerConfig config = PickupRangeMod.getServerConfig();
         PlayerRangeData data = RANGES.get(uuid);
         if (data != null && data.getItemRange() > 0) {
-            return data.getItemRange();
+            return config.clamp(data.getItemRange());
         }
-        return PickupRangeMod.getServerConfig().getDefaultItemRange();
+        return config.clamp(config.getDefaultItemRange());
     }
 
     /**
@@ -157,11 +159,12 @@ public final class PlayerRangeManager {
      * @return effective XP range in blocks
      */
     public static double getEffectiveXpRange(UUID uuid) {
+        ServerConfig config = PickupRangeMod.getServerConfig();
         PlayerRangeData data = RANGES.get(uuid);
         if (data != null && data.getXpRange() > 0) {
-            return data.getXpRange();
+            return config.clamp(data.getXpRange());
         }
-        return PickupRangeMod.getServerConfig().getDefaultXpRange();
+        return config.clamp(config.getDefaultXpRange());
     }
 
     // -------------------------------------------------------------------------

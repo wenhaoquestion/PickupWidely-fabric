@@ -30,7 +30,7 @@ import java.util.regex.Pattern;
  *
  * <p>The sliders are clamped to the server-provided {@code [minRange, maxRange]} bounds,
  * received via {@link com.example.pickuprange.network.SyncConfigPayload} on join.
- * In singleplayer (no server mod), the sliders use a safe 0.5–16.0 fallback range.
+ * Before server sync, the sliders use the default 0.5–64.0 bounds.
  */
 @Environment(EnvType.CLIENT)
 public class PickupRangeScreen extends Screen {
@@ -41,8 +41,6 @@ public class PickupRangeScreen extends Screen {
     private static final int SLIDER_H = 20;
     private static final int INPUT_W  = 72;
     private static final int BTN_W    = 96;
-    private static final double XP_MIN = 0.5;
-    private static final double XP_MAX = 128.0;
     private static final Pattern RANGE_INPUT = Pattern.compile("\\d*(\\.\\d*)?");
 
     // Values being edited (updated by sliders in real time).
@@ -94,7 +92,7 @@ public class PickupRangeScreen extends Screen {
         xpSlider = addRenderableWidget(new RangeSlider(
                 sliderX, xpSliderY, SLIDER_W, SLIDER_H,
                 Component.translatable("pickuprange.screen.xp_range"),
-                pendingXpRange, XP_MIN, XP_MAX,
+                pendingXpRange, min, max,
                 this::onXpSliderChanged
         ));
         xpInput = addRenderableWidget(createRangeInput(

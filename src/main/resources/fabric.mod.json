@@ -4,9 +4,12 @@
   "version": "${version}",
 
   "name": "Pickup Range",
-  "description": "Configurable item and XP orb pickup range with per-player settings, commands, and client visual indicators.",
+  "description": "Configurable item and XP orb pickup range with per-player settings, commands, and an in-game settings screen.",
   "authors": [
-    "HadronCollision"
+    "wenhaoquestion"
+  ],
+  "contributors": [
+    "HadronCollision — original PickupWidely concept"
   ],
   "contact": {
     "discord": "https://discord.com/users/930191705360195665",
@@ -30,9 +33,9 @@
   ],
 
   "depends": {
-    "fabricloader": ">=0.15.0",
+    "fabricloader": ">=0.17.3",
     "fabric-api": "*",
-    "minecraft": ">=1.21.11",
+    "minecraft": "1.21.11",
     "java": ">=21"
   }
 }

@@ -29,6 +29,7 @@ public final class ServerConfig {
     private static final double DEFAULT_XP_RANGE   = 8.0;
     private static final double DEFAULT_MAX_RANGE   = 64.0;
     private static final double DEFAULT_MIN_RANGE   = 0.5;
+    private static final double ABSOLUTE_MIN_RANGE  = 0.1;
 
     // --- Config fields (directly serialized) ---
 
@@ -81,6 +82,9 @@ public final class ServerConfig {
      * @return a value guaranteed to be within the valid range
      */
     public double clamp(double value) {
+        if (!Double.isFinite(value)) {
+            return minRange;
+        }
         return Math.max(minRange, Math.min(maxRange, value));
     }
 
@@ -144,19 +148,19 @@ public final class ServerConfig {
      * Called after deserialization to prevent bad config from crashing the server.
      */
     private void validate() {
-        if (Double.isNaN(defaultItemRange) || defaultItemRange <= 0) {
+        if (!Double.isFinite(defaultItemRange) || defaultItemRange <= 0) {
             PickupRangeMod.LOGGER.warn("defaultItemRange is invalid ({}), resetting to {}", defaultItemRange, DEFAULT_ITEM_RANGE);
             defaultItemRange = DEFAULT_ITEM_RANGE;
         }
-        if (Double.isNaN(defaultXpRange) || defaultXpRange <= 0) {
+        if (!Double.isFinite(defaultXpRange) || defaultXpRange <= 0) {
             PickupRangeMod.LOGGER.warn("defaultXpRange is invalid ({}), resetting to {}", defaultXpRange, DEFAULT_XP_RANGE);
             defaultXpRange = DEFAULT_XP_RANGE;
         }
-        if (Double.isNaN(maxRange) || maxRange <= 0) {
+        if (!Double.isFinite(maxRange) || maxRange < ABSOLUTE_MIN_RANGE) {
             PickupRangeMod.LOGGER.warn("maxRange is invalid ({}), resetting to {}", maxRange, DEFAULT_MAX_RANGE);
             maxRange = DEFAULT_MAX_RANGE;
         }
-        if (Double.isNaN(minRange) || minRange < 0) {
+        if (!Double.isFinite(minRange) || minRange < ABSOLUTE_MIN_RANGE) {
             PickupRangeMod.LOGGER.warn("minRange is invalid ({}), resetting to {}", minRange, DEFAULT_MIN_RANGE);
             minRange = DEFAULT_MIN_RANGE;
         }
@@ -166,7 +170,7 @@ public final class ServerConfig {
             minRange = maxRange;
             maxRange = tmp;
         }
-        defaultItemRange = Math.max(minRange, Math.min(maxRange, defaultItemRange));
-        defaultXpRange   = Math.max(0.5, defaultXpRange);
+        defaultItemRange = clamp(defaultItemRange);
+        defaultXpRange   = clamp(defaultXpRange);
     }
 }

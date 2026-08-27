@@ -56,24 +56,26 @@ public final class PickupRangeCommand {
 
                 // /pickuprange set <range>
                 .then(Commands.literal("set")
-                    .then(Commands.argument("range", DoubleArgumentType.doubleArg(0.1, 64.0))
+                    .then(Commands.argument("range", DoubleArgumentType.doubleArg(0.0))
                         .executes(ctx -> executeSetSelf(ctx.getSource(),
-                                DoubleArgumentType.getDouble(ctx, "range")))
-                        // /pickuprange set <player> <range>  (op only)
-                        .then(Commands.argument("player", EntityArgument.player())
-                            .requires(Commands.hasPermission(Commands.LEVEL_ADMINS))
+                                DoubleArgumentType.getDouble(ctx, "range"))))
+                    // /pickuprange set <player> <range>  (op only)
+                    .then(Commands.argument("player", EntityArgument.player())
+                        .requires(Commands.hasPermission(Commands.LEVEL_ADMINS))
+                        .then(Commands.argument("range", DoubleArgumentType.doubleArg(0.0))
                             .executes(ctx -> executeSetOther(ctx.getSource(),
                                     EntityArgument.getPlayer(ctx, "player"),
                                     DoubleArgumentType.getDouble(ctx, "range"))))))
 
                 // /pickuprange setxp <range>
                 .then(Commands.literal("setxp")
-                    .then(Commands.argument("range", DoubleArgumentType.doubleArg(0.1, 128.0))
+                    .then(Commands.argument("range", DoubleArgumentType.doubleArg(0.0))
                         .executes(ctx -> executeSetXpSelf(ctx.getSource(),
-                                DoubleArgumentType.getDouble(ctx, "range")))
-                        // /pickuprange setxp <player> <range>  (op only)
-                        .then(Commands.argument("player", EntityArgument.player())
-                            .requires(Commands.hasPermission(Commands.LEVEL_ADMINS))
+                                DoubleArgumentType.getDouble(ctx, "range"))))
+                    // /pickuprange setxp <player> <range>  (op only)
+                    .then(Commands.argument("player", EntityArgument.player())
+                        .requires(Commands.hasPermission(Commands.LEVEL_ADMINS))
+                        .then(Commands.argument("range", DoubleArgumentType.doubleArg(0.0))
                             .executes(ctx -> executeSetXpOther(ctx.getSource(),
                                     EntityArgument.getPlayer(ctx, "player"),
                                     DoubleArgumentType.getDouble(ctx, "range"))))))
@@ -169,7 +171,7 @@ public final class PickupRangeCommand {
             return 0;
         }
 
-        double clamped = Math.max(0.1, Math.min(128.0, range));
+        double clamped = config.clamp(range);
         ServerPlayer self = source.getPlayerOrException();
         PlayerRangeManager.setXpRange(self.getUUID(), clamped);
         pushRangeToClient(self);
@@ -180,7 +182,7 @@ public final class PickupRangeCommand {
     }
 
     private static int executeSetXpOther(CommandSourceStack source, ServerPlayer target, double range) {
-        double clamped = Math.max(0.1, Math.min(128.0, range));
+        double clamped = PickupRangeMod.getServerConfig().clamp(range);
         PlayerRangeManager.setXpRange(target.getUUID(), clamped);
         pushRangeToClient(target);
 
@@ -197,6 +199,15 @@ public final class PickupRangeCommand {
         ServerConfig config = PickupRangeMod.getServerConfig();
 
         if (target == null) {
+            if (!config.isAllowPlayerOverride()) {
+                source.sendFailure(Component.translatable("pickuprange.command.error.override"));
+                return 0;
+            }
+            if (config.isRequirePermission() && !hasAdminPermission(source)) {
+                source.sendFailure(Component.translatable("pickuprange.command.error.permission"));
+                return 0;
+            }
+
             ServerPlayer self = source.getPlayerOrException();
             PlayerRangeManager.resetRange(self.getUUID());
             pushRangeToClient(self);

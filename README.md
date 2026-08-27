@@ -26,7 +26,7 @@ Full `/pickuprange` command suite for operators (see [Commands](#commands) below
 - Graceful fallback: a client without the mod can still join a server with the mod and benefit from the expanded range server-side
 
 ### Events API
-- `PickupRangeCallback.ITEM_PICKUP` — other mods can cancel or modify extended-range pickups
+- `PickupRangeCallback.ITEM_PICKUP` — other mods can cancel extended-range pickups
 
 ---
 
@@ -38,7 +38,7 @@ Full `/pickuprange` command suite for operators (see [Commands](#commands) below
 | **Client only** | Drop the JAR into the client `mods/` folder. Works in singleplayer. On multiplayer servers without the mod, range changes have no effect. |
 | **Both sides** | Install on both server and client for the full feature set: config sync, per-player ranges, and the settings GUI. |
 
-Requires **Fabric Loader ≥ 0.15.0** and **Fabric API**.
+Requires **Fabric Loader ≥ 0.17.3** and **Fabric API**.
 
 ---
 
@@ -53,17 +53,9 @@ Generated automatically on first launch.
 | `defaultItemRange` | double | `1.5` | Item pickup range for all players (blocks) |
 | `defaultXpRange` | double | `8.0` | XP orb attraction range (blocks) |
 | `maxRange` | double | `64.0` | Hard cap — no player can exceed this |
-| `minRange` | double | `0.5` | Hard floor — no player can go below this |
+| `minRange` | double | `0.5` | Hard floor — no player can go below this (minimum `0.1`) |
 | `allowPlayerOverride` | boolean | `true` | Allow players to change their own range via GUI or commands |
 | `requirePermission` | boolean | `false` | Require op level ≥ 2 to use `/pickuprange set` on self |
-
-### Client config — `config/pickup-range-client.json`
-
-| Option | Type | Default | Description |
-|--------|------|---------|-------------|
-| `rangeOverrideInSingleplayer` | double | `0.0` | Item range in singleplayer without the server mod. `0` = use server default |
-
----
 
 ## Settings GUI
 
@@ -166,4 +158,4 @@ cd PickupWidely-fabric
 
 ## License
 
-MIT — see [LICENSE](LICENSE).
+The 2.0 rewrite is MIT-licensed — see [LICENSE](LICENSE). Credit to HadronCollision for the original PickupWidely concept.
