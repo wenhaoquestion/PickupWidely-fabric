@@ -6,7 +6,7 @@ All notable changes to Pickup Range are documented here.
 
 ## [2.0.0] — 2026-08-26
 
-Complete rewrite of the mod.
+Complete rewrite of the mod, backported with full feature parity to Minecraft 1.20.6.
 
 ### Added
 - **Mojang official mappings** — replaced Yarn mappings for forward compatibility with future unobfuscated Minecraft versions
@@ -27,7 +27,7 @@ Complete rewrite of the mod.
 - Logger migrated from `java.util.logging.Logger` to `org.slf4j.Logger` (Fabric standard)
 - Pickup radius type changed from `byte` (max 127) to `double` (default bounds 0.5–64.0)
 - Config format changed from `.properties` to JSON
-- Minimum Java version raised from 17 to 21 (required for Minecraft 1.21+)
+- Minimum Java version raised from 17 to 21 (required for Minecraft 1.20.6)
 
 ### Fixed
 - Original mixin only searched for one nearby player — now handles multiple players

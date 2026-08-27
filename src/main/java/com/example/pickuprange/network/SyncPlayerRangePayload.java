@@ -5,7 +5,7 @@ import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.network.codec.ByteBufCodecs;
 import net.minecraft.network.codec.StreamCodec;
 import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
-import net.minecraft.resources.Identifier;
+import net.minecraft.resources.ResourceLocation;
 
 /**
  * Server → Client payload carrying the <em>effective</em> pickup ranges for the
@@ -24,7 +24,7 @@ public record SyncPlayerRangePayload(
     /** Unique identifier for this payload type. */
     public static final CustomPacketPayload.Type<SyncPlayerRangePayload> TYPE =
             new CustomPacketPayload.Type<>(
-                    Identifier.fromNamespaceAndPath(PickupRangeMod.MOD_ID, "sync_player_range"));
+                    new ResourceLocation(PickupRangeMod.MOD_ID, "sync_player_range"));
 
     /** Codec used to encode/decode this payload over the network. */
     public static final StreamCodec<FriendlyByteBuf, SyncPlayerRangePayload> CODEC =

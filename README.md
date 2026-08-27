@@ -114,7 +114,7 @@ All commands are under `/pickuprange`.
 
 | Mod Version | Minecraft |
 |-------------|-----------|
-| 2.x | 1.21.11 |
+| 2.x (this branch) | 1.20.6 |
 | 0.0.1 | 1.20.4 |
 
 ---
@@ -140,11 +140,12 @@ The GUI still opens but clicking Apply will fail with a server-side permission e
 
 ## Building from Source
 
-Requirements: JDK 21, internet connection (first build downloads Minecraft assets).
+Requirements: JDK 21 (required by Minecraft 1.20.6), internet connection (first build downloads Minecraft assets).
 
 ```bash
 git clone https://github.com/wenhaoquestion/PickupWidely-fabric.git
 cd PickupWidely-fabric
+git switch mc/1.20.6
 ./gradlew build
 # Output JAR: build/libs/pickup-range-2.0.0.jar
 ```

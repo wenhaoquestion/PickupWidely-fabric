@@ -32,7 +32,7 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
  *   <li>{@code ItemEntity#tick()} — stable across 1.18–1.21.x</li>
  *   <li>{@code ItemEntity#playerTouch(Player)} — Mojang name; was {@code onPlayerCollision}
  *       in older Yarn mappings.</li>
- *   <li>{@code ItemEntity#pickupDelay} — private field, same name in Mojang 1.21.x</li>
+ *   <li>{@code ItemEntity#pickupDelay} — private field, same name in Mojang 1.20.6</li>
  * </ul>
  */
 @Mixin(ItemEntity.class)

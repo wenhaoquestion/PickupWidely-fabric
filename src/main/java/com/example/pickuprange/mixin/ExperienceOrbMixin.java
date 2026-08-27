@@ -3,26 +3,30 @@ package com.example.pickuprange.mixin;
 import com.example.pickuprange.PickupRangeMod;
 import com.example.pickuprange.config.ServerConfig;
 import com.example.pickuprange.data.PlayerRangeManager;
+import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.ExperienceOrb;
 import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.level.Level;
 import net.minecraft.world.phys.Vec3;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Shadow;
 import org.spongepowered.asm.mixin.injection.At;
-import org.spongepowered.asm.mixin.injection.Inject;
-import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
+import org.spongepowered.asm.mixin.injection.Constant;
+import org.spongepowered.asm.mixin.injection.ModifyConstant;
+import org.spongepowered.asm.mixin.injection.Redirect;
 
 /**
  * Mixin into {@link ExperienceOrb} to extend the XP orb attraction range.
  *
- * <p>Vanilla's private follow routine uses one fixed 8-block radius. This mixin replaces
- * that routine on the logical server so each player can be evaluated against their own
- * effective XP range. The default value of 8.0 follows vanilla's selection and force curve.
+ * <p>In 1.20.6 vanilla refreshes the followed player from the private
+ * {@code scanForEntities()} method and applies the attraction curve in {@code tick()}.
+ * This mixin redirects target selection and replaces only the two range constants, leaving
+ * movement, gravity, merging, ageing, and client prediction in vanilla code.
  *
  * <p>Vanilla still handles the final absorption when the orb reaches the player.
  *
- * <p>VERSION-SENSITIVE: targets the Mojang-mapped private method
- * {@code ExperienceOrb#followNearbyPlayer()} in 1.21.11.
+ * <p>VERSION-SENSITIVE: targets the Mojang-mapped {@code scanForEntities()} and
+ * {@code tick()} implementation in 1.20.6.
  */
 @Mixin(ExperienceOrb.class)
 public abstract class ExperienceOrbMixin {
@@ -30,57 +34,97 @@ public abstract class ExperienceOrbMixin {
     /** Vanilla's cached target; kept coherent for save/debug/mod interoperability. */
     @Shadow private Player followingPlayer;
 
-    /**
-     * Selects the nearest player whose own effective range contains this orb, then applies
-     * vanilla's attraction curve using that range as the radius.
-     */
-    @Inject(at = @At("HEAD"), method = "followNearbyPlayer", cancellable = true)
-    private void onFollowNearbyPlayer(CallbackInfo ci) {
-        ExperienceOrb self = (ExperienceOrb) (Object) this;
-
-        // Keep the client path untouched; it provides vanilla prediction/render motion.
-        if (self.level().isClientSide()) return;
+    /** Selects the nearest player whose own effective XP range contains this orb. */
+    @Redirect(
+            method = "scanForEntities",
+            at = @At(
+                    value = "INVOKE",
+                    target = "Lnet/minecraft/world/level/Level;getNearestPlayer(Lnet/minecraft/world/entity/Entity;D)Lnet/minecraft/world/entity/player/Player;"
+            )
+    )
+    private Player pickupRange$findNearestEligiblePlayer(Level level, Entity orb,
+                                                          double vanillaRange) {
+        // Keep the client path byte-for-byte equivalent to vanilla target selection.
+        if (level.isClientSide()) {
+            return level.getNearestPlayer(orb, vanillaRange);
+        }
 
         ServerConfig config = PickupRangeMod.getServerConfig();
         Player nearest = null;
         double nearestDistanceSq = Double.POSITIVE_INFINITY;
-        double nearestEffectiveRange = 0.0;
 
-        // getNearestPlayer cannot express a different maximum distance per player. The
-        // server player list is normally small and avoids a large entity-volume query.
-        for (Player player : self.level().players()) {
+        for (Player player : level.players()) {
             if (player.isSpectator() || player.isDeadOrDying()) continue;
 
             double rawRange = PlayerRangeManager.getEffectiveXpRange(player);
             if (!Double.isFinite(rawRange)) continue;
             double effectiveRange = config.clamp(rawRange);
 
+            // Match the point used by ExperienceOrb#tick for its attraction vector.
             Vec3 delta = player.position()
-                    .add(0.0, player.getBbHeight() * 0.5, 0.0)
-                    .subtract(self.position());
+                    .add(0.0, player.getEyeHeight() * 0.5, 0.0)
+                    .subtract(orb.position());
             double distanceSq = delta.lengthSqr();
             if (distanceSq > effectiveRange * effectiveRange) continue;
 
             if (distanceSq < nearestDistanceSq) {
                 nearest = player;
                 nearestDistanceSq = distanceSq;
-                nearestEffectiveRange = effectiveRange;
             }
         }
 
-        this.followingPlayer = nearest;
+        return nearest;
+    }
 
-        if (nearest != null) {
-            // This is vanilla's force formula with 8.0 replaced by the effective range.
-            Vec3 delta = nearest.position()
-                    .add(0.0, nearest.getBbHeight() * 0.5, 0.0)
-                    .subtract(self.position());
-            double strength = 1.0 - Math.sqrt(delta.lengthSqr()) / nearestEffectiveRange;
+    /** Uses the same mid-body distance for retention that target selection and force use. */
+    @Redirect(
+            method = "scanForEntities",
+            at = @At(
+                    value = "INVOKE",
+                    target = "Lnet/minecraft/world/entity/player/Player;distanceToSqr(Lnet/minecraft/world/entity/Entity;)D"
+            )
+    )
+    private double pickupRange$followingPlayerDistanceSquared(Player player, Entity orb) {
+        if (orb.level().isClientSide()) {
+            return player.distanceToSqr(orb);
+        }
+        return player.position()
+                .add(0.0, player.getEyeHeight() * 0.5, 0.0)
+                .distanceToSqr(orb.position());
+    }
 
-            self.setDeltaMovement(self.getDeltaMovement().add(
-                    delta.normalize().scale(strength * strength * 0.1)));
+    /** Replaces the 8² target-retention check in the periodic target scan. */
+    @ModifyConstant(method = "scanForEntities", constant = @Constant(doubleValue = 64.0))
+    private double pickupRange$scanDistanceSquared(double vanillaDistanceSquared) {
+        double range = pickupRange$currentFollowingRange();
+        return range * range;
+    }
+
+    /** Replaces the 8² attraction eligibility check in the vanilla movement tick. */
+    @ModifyConstant(method = "tick", constant = @Constant(doubleValue = 64.0))
+    private double pickupRange$attractionDistanceSquared(double vanillaDistanceSquared) {
+        double range = pickupRange$currentFollowingRange();
+        return range * range;
+    }
+
+    /** Replaces the divisor in vanilla's {@code 1 - distance / 8} force curve. */
+    @ModifyConstant(method = "tick", constant = @Constant(doubleValue = 8.0))
+    private double pickupRange$attractionRange(double vanillaRange) {
+        return pickupRange$currentFollowingRange();
+    }
+
+    /** Returns the clamped range belonging to vanilla's currently followed player. */
+    private double pickupRange$currentFollowingRange() {
+        ExperienceOrb self = (ExperienceOrb) (Object) this;
+        if (self.level().isClientSide() || followingPlayer == null) {
+            return 8.0;
         }
 
-        ci.cancel();
+        ServerConfig config = PickupRangeMod.getServerConfig();
+        double rawRange = PlayerRangeManager.getEffectiveXpRange(followingPlayer);
+        if (!Double.isFinite(rawRange)) {
+            rawRange = config.getDefaultXpRange();
+        }
+        return config.clamp(rawRange);
     }
 }

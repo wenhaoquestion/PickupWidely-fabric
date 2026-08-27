@@ -9,7 +9,6 @@ import net.minecraft.client.gui.components.AbstractSliderButton;
 import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.gui.components.EditBox;
 import net.minecraft.client.gui.screens.Screen;
-import net.minecraft.client.input.KeyEvent;
 import net.minecraft.network.chat.Component;
 import org.lwjgl.glfw.GLFW;
 
@@ -145,8 +144,8 @@ public class PickupRangeScreen extends Screen {
     }
 
     @Override
-    public boolean keyPressed(KeyEvent keyEvent) {
-        if (keyEvent.key() == GLFW.GLFW_KEY_ENTER || keyEvent.key() == GLFW.GLFW_KEY_KP_ENTER) {
+    public boolean keyPressed(int keyCode, int scanCode, int modifiers) {
+        if (keyCode == GLFW.GLFW_KEY_ENTER || keyCode == GLFW.GLFW_KEY_KP_ENTER) {
             if (itemInput != null && itemInput.isFocused()) {
                 commitRangeInput(itemInput, itemSlider);
                 return true;
@@ -156,7 +155,7 @@ public class PickupRangeScreen extends Screen {
                 return true;
             }
         }
-        return super.keyPressed(keyEvent);
+        return super.keyPressed(keyCode, scanCode, modifiers);
     }
 
     /** Sends the pending values as commands and closes the screen. */
@@ -309,12 +308,22 @@ public class PickupRangeScreen extends Screen {
 
         private void setActualValue(double actualValue) {
             if (max <= min) {
-                setValue(0.0);
+                setNormalizedValue(0.0);
                 return;
             }
 
             double clamped = clamp(normalizeRange(actualValue), min, max);
-            setValue((clamped - min) / (max - min));
+            setNormalizedValue((clamped - min) / (max - min));
+        }
+
+        /** Mirrors the private 1.20.6 slider setter while keeping callbacks intact. */
+        private void setNormalizedValue(double normalized) {
+            double previous = value;
+            value = clamp(normalized, 0.0, 1.0);
+            if (previous != value) {
+                applyValue();
+            }
+            updateMessage();
         }
 
         @Override
