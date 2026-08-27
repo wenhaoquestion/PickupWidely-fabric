@@ -7,7 +7,6 @@ import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.ExperienceOrb;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.level.Level;
-import net.minecraft.world.phys.Vec3;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Shadow;
 import org.spongepowered.asm.mixin.injection.At;
@@ -60,11 +59,8 @@ public abstract class ExperienceOrbMixin {
             if (!Double.isFinite(rawRange)) continue;
             double effectiveRange = config.clamp(rawRange);
 
-            // Match the point used by ExperienceOrb#tick for its attraction vector.
-            Vec3 delta = player.position()
-                    .add(0.0, player.getEyeHeight() * 0.5, 0.0)
-                    .subtract(orb.position());
-            double distanceSq = delta.lengthSqr();
+            // Match vanilla target selection and retention: entity-to-entity distance.
+            double distanceSq = player.distanceToSqr(orb);
             if (distanceSq > effectiveRange * effectiveRange) continue;
 
             if (distanceSq < nearestDistanceSq) {
@@ -74,23 +70,6 @@ public abstract class ExperienceOrbMixin {
         }
 
         return nearest;
-    }
-
-    /** Uses the same mid-body distance for retention that target selection and force use. */
-    @Redirect(
-            method = "scanForEntities",
-            at = @At(
-                    value = "INVOKE",
-                    target = "Lnet/minecraft/world/entity/player/Player;distanceToSqr(Lnet/minecraft/world/entity/Entity;)D"
-            )
-    )
-    private double pickupRange$followingPlayerDistanceSquared(Player player, Entity orb) {
-        if (orb.level().isClientSide()) {
-            return player.distanceToSqr(orb);
-        }
-        return player.position()
-                .add(0.0, player.getEyeHeight() * 0.5, 0.0)
-                .distanceToSqr(orb.position());
     }
 
     /** Replaces the 8² target-retention check in the periodic target scan. */
