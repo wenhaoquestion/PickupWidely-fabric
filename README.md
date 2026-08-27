@@ -114,7 +114,7 @@ All commands are under `/pickuprange`.
 
 | Mod Version | Minecraft |
 |-------------|-----------|
-| 2.0.0+1.19.4 | 1.19.4 |
+| 2.0.1+1.19.4 | 1.19.4 |
 | 0.0.1 | 1.20.4 |
 
 ---
@@ -147,7 +147,7 @@ git clone https://github.com/wenhaoquestion/PickupWidely-fabric.git
 cd PickupWidely-fabric
 git switch mc/1.19.4
 ./gradlew build
-# Output JAR: build/libs/pickup-range-2.0.0+1.19.4.jar
+# Output JAR: build/libs/pickup-range-2.0.1+1.19.4.jar
 ```
 
 ```bash
