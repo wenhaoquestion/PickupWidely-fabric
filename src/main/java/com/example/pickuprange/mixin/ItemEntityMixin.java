@@ -89,7 +89,7 @@ public abstract class ItemEntityMixin {
         // every item entity on every tick.
         for (Player player : self.level().players()) {
             if (self.isRemoved()) break;
-            if (player.isSpectator()) continue;
+            if (player.isSpectator() || player.isDeadOrDying()) continue;
 
             // Vanilla's player tick owns this exact overlap. A fixed-radius approximation
             // incorrectly swallowed valid configured ranges such as 1.5 blocks.
