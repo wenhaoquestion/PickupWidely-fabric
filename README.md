@@ -38,7 +38,7 @@ Full `/pickuprange` command suite for operators (see [Commands](#commands) below
 | **Client only** | Drop the JAR into the client `mods/` folder. Works in singleplayer. On multiplayer servers without the mod, range changes have no effect. |
 | **Both sides** | Install on both server and client for the full feature set: config sync, per-player ranges, and the settings GUI. |
 
-Requires **Minecraft 1.16.5**, **Fabric Loader ≥ 0.15.11**, **Fabric API**, and **Java 8**.
+Game runtime requirements: **Minecraft 1.16.5**, **Fabric Loader ≥ 0.15.11**, **Fabric API**, and **Java 8**.
 
 ---
 
@@ -114,7 +114,7 @@ All commands are under `/pickuprange`.
 
 | Mod Version | Minecraft |
 |-------------|-----------|
-| 2.0.0 (this branch) | 1.16.5 |
+| 2.0.0+1.16.5 (this branch) | 1.16.5 |
 | 0.0.1 | 1.20.4 |
 
 ---
@@ -140,11 +140,12 @@ The GUI still opens but clicking Apply will fail with a server-side permission e
 
 ## Building from Source
 
-Requirements: JDK 8, internet connection (first build downloads Minecraft assets).
+Build and development requirements: **JDK 17** and an internet connection (the first build downloads Minecraft assets). The compiled mod still targets Java 8 for the Minecraft 1.16.5 game runtime.
 
 ```bash
 git clone https://github.com/wenhaoquestion/PickupWidely-fabric.git
 cd PickupWidely-fabric
+git switch mc/1.16.5
 ./gradlew build
 # Output JAR: build/libs/pickup-range-2.0.0+1.16.5.jar
 ```

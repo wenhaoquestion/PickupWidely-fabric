@@ -4,7 +4,7 @@ All notable changes to Pickup Range are documented here.
 
 ---
 
-## [2.0.0] — 2026-08-26
+## [2.0.0+1.16.5] — 2026-08-26
 
 Complete rewrite of the mod.
 
