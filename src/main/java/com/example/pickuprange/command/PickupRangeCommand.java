@@ -50,7 +50,7 @@ public final class PickupRangeCommand {
                 .then(Commands.literal("get")
                     .executes(ctx -> executeGet(ctx.getSource(), null))
                     .then(Commands.argument("player", EntityArgument.player())
-                        .requires(source -> source.hasPermission(Commands.LEVEL_ADMINS))
+                        .requires(source -> source.hasPermission(Commands.LEVEL_GAMEMASTERS))
                         .executes(ctx -> executeGet(ctx.getSource(),
                                 EntityArgument.getPlayer(ctx, "player")))))
 
@@ -61,7 +61,7 @@ public final class PickupRangeCommand {
                                 DoubleArgumentType.getDouble(ctx, "range"))))
                     // /pickuprange set <player> <range>  (op only)
                     .then(Commands.argument("player", EntityArgument.player())
-                        .requires(source -> source.hasPermission(Commands.LEVEL_ADMINS))
+                        .requires(source -> source.hasPermission(Commands.LEVEL_GAMEMASTERS))
                         .then(Commands.argument("range", DoubleArgumentType.doubleArg(0.0))
                             .executes(ctx -> executeSetOther(ctx.getSource(),
                                     EntityArgument.getPlayer(ctx, "player"),
@@ -74,7 +74,7 @@ public final class PickupRangeCommand {
                                 DoubleArgumentType.getDouble(ctx, "range"))))
                     // /pickuprange setxp <player> <range>  (op only)
                     .then(Commands.argument("player", EntityArgument.player())
-                        .requires(source -> source.hasPermission(Commands.LEVEL_ADMINS))
+                        .requires(source -> source.hasPermission(Commands.LEVEL_GAMEMASTERS))
                         .then(Commands.argument("range", DoubleArgumentType.doubleArg(0.0))
                             .executes(ctx -> executeSetXpOther(ctx.getSource(),
                                     EntityArgument.getPlayer(ctx, "player"),
@@ -84,13 +84,13 @@ public final class PickupRangeCommand {
                 .then(Commands.literal("reset")
                     .executes(ctx -> executeReset(ctx.getSource(), null))
                     .then(Commands.argument("player", EntityArgument.player())
-                        .requires(source -> source.hasPermission(Commands.LEVEL_ADMINS))
+                        .requires(source -> source.hasPermission(Commands.LEVEL_GAMEMASTERS))
                         .executes(ctx -> executeReset(ctx.getSource(),
                                 EntityArgument.getPlayer(ctx, "player")))))
 
                 // /pickuprange reload  (op level 2)
                 .then(Commands.literal("reload")
-                    .requires(source -> source.hasPermission(Commands.LEVEL_ADMINS))
+                    .requires(source -> source.hasPermission(Commands.LEVEL_GAMEMASTERS))
                     .executes(ctx -> executeReload(ctx.getSource())))
         );
     }
@@ -255,7 +255,7 @@ public final class PickupRangeCommand {
     }
 
     private static boolean hasAdminPermission(CommandSourceStack source) {
-        return source.hasPermission(Commands.LEVEL_ADMINS);
+        return source.hasPermission(Commands.LEVEL_GAMEMASTERS);
     }
 
     /**
