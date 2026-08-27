@@ -5,7 +5,7 @@ import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.network.codec.ByteBufCodecs;
 import net.minecraft.network.codec.StreamCodec;
 import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
-import net.minecraft.resources.Identifier;
+import net.minecraft.resources.ResourceLocation;
 
 /**
  * Server → Client payload that pushes the active server configuration to the client.
@@ -30,7 +30,7 @@ public record SyncConfigPayload(
 
     public static final CustomPacketPayload.Type<SyncConfigPayload> TYPE =
             new CustomPacketPayload.Type<>(
-                    Identifier.fromNamespaceAndPath(PickupRangeMod.MOD_ID, "sync_config"));
+                    ResourceLocation.fromNamespaceAndPath(PickupRangeMod.MOD_ID, "sync_config"));
 
     public static final StreamCodec<FriendlyByteBuf, SyncConfigPayload> CODEC =
             StreamCodec.composite(

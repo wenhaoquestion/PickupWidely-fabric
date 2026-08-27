@@ -118,6 +118,7 @@ The `master` branch tracks the newest supported release.
 | Mod Version | Minecraft | Git branch | Game / runtime Java |
 |-------------|-----------|------------|---------------------|
 | 2.0.x | 1.21.11 | [`master`](../../tree/master) / [`mc/1.21.11`](../../tree/mc/1.21.11) | 21 |
+| 2.0.1+1.21.10 | 1.21.10 | [`mc/1.21.10`](../../tree/mc/1.21.10) | 21 |
 | 2.0.x | 1.20.6 | [`mc/1.20.6`](../../tree/mc/1.20.6) | 21 |
 | 2.0.x | 1.19.4 | [`mc/1.19.4`](../../tree/mc/1.19.4) | 17 |
 | 2.0.x | 1.18.2 | [`mc/1.18.2`](../../tree/mc/1.18.2) | 17 |
@@ -157,8 +158,9 @@ Requirements: JDK 21, internet connection (first build downloads Minecraft asset
 ```bash
 git clone https://github.com/wenhaoquestion/PickupWidely-fabric.git
 cd PickupWidely-fabric
+git switch mc/1.21.10
 ./gradlew build
-# Output JAR: build/libs/pickup-range-2.0.0.jar
+# Output JAR: build/libs/pickup-range-2.0.1+1.21.10.jar
 ```
 
 ```bash
@@ -166,7 +168,7 @@ cd PickupWidely-fabric
 ./gradlew runServer   # test server
 ```
 
-To build an older Minecraft target, switch to its branch first and use the Java
+To build another Minecraft target, switch to its branch first and use the Java
 version listed in the compatibility table:
 
 ```bash

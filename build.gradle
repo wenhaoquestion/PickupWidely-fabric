@@ -18,9 +18,7 @@ repositories {
 dependencies {
     minecraft "com.mojang:minecraft:${project.minecraft_version}"
 
-    // Use Mojang official mappings instead of Yarn.
-    // Critical: versions after 1.21.11 are unobfuscated and Yarn will not be updated.
-    // VERSION-SENSITIVE: loom.officialMojangMappings() is the forward-compatible choice.
+    // Keep the rewrite on Mojang official mappings, matching the 1.21.11 baseline.
     mappings loom.officialMojangMappings()
 
     modImplementation "net.fabricmc:fabric-loader:${project.loader_version}"

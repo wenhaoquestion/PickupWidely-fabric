@@ -4,12 +4,12 @@ All notable changes to Pickup Range are documented here.
 
 ---
 
-## [2.0.0] — 2026-08-26
+## [2.0.1+1.21.10] — 2026-08-26
 
 Complete rewrite of the mod.
 
 ### Added
-- **Mojang official mappings** — replaced Yarn mappings for forward compatibility with future unobfuscated Minecraft versions
+- **Mojang official mappings** — matches the maintained 1.21.11 baseline and keeps cross-version source names stable
 - **Per-player pickup ranges** — stored in `<world>/data/pickuprange_players.json`, persisted across restarts
 - **XP orb range** — separate configurable attraction radius for experience orbs
 - **Commands** — `/pickuprange set/get/reset/setxp/reload` with proper permission checks

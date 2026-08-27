@@ -308,13 +308,18 @@ public class PickupRangeScreen extends Screen {
         }
 
         private void setActualValue(double actualValue) {
-            if (max <= min) {
-                setValue(0.0);
-                return;
+            double normalized = 0.0;
+            if (max > min) {
+                double clamped = clamp(normalizeRange(actualValue), min, max);
+                normalized = (clamped - min) / (max - min);
             }
 
-            double clamped = clamp(normalizeRange(actualValue), min, max);
-            setValue((clamped - min) / (max - min));
+            double previous = value;
+            value = clamp(normalized, 0.0, 1.0);
+            if (previous != value) {
+                applyValue();
+            }
+            updateMessage();
         }
 
         @Override
